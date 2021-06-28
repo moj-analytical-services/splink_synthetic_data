@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "splink_synthetic_data"
+version = "0.1.0"
+description = ""
+authors = ["Robin Linacre <robin.linacre@digital.justice.gov.uk>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pandas = "^1.2.5"
+rdflib = "^5.0.0"
+duckdb = "^0.2.7"
+
+[tool.poetry.dev-dependencies]
+duckdb = "^0.2.7"
+flake8 = "^3.9.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
