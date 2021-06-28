@@ -1,0 +1,16 @@
+
+
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.ipynb
+*.parquet
+*.html
+*.json
+
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
