@@ -102,7 +102,7 @@ def get_value_from_result(x):
 def query_with_offset(query, page=0, pagesize=500):
     limit_offset = f" limit {pagesize} offset {page*pagesize}"
     this_query = query.replace("LIMIT 100", limit_offset)
-    # print(this_query)
+    print(this_query)
     results = get_results(endpoint_url, this_query)
     df = pd.DataFrame(results["results"]["bindings"])
     df = df.applymap(get_value_from_result)
@@ -119,10 +119,7 @@ def replace_url(x):
 def pipe_to_array(x):
     try:
         arr = x.split(" | ")
-        if len(arr) == 1:
-            return arr[0]
-        else:
-            return arr
+        return arr
     except:
         return x
 
@@ -145,8 +142,9 @@ def dedupe_and_clean_results(df_to_q):
 
     df_deduped = duckdb.query(sql).to_df()
 
-    df_deduped_cleaned = df_deduped.applymap(replace_url).applymap(pipe_to_array)
-    return df_deduped_cleaned
+    df_deduped = df_deduped.applymap(replace_url)
+    # df_deduped = df_deduped.applymap(pipe_to_array)
+    return df_deduped
 
 
 def get_readable_columns(df):
@@ -202,7 +200,7 @@ WHERE {{
   INCLUDE %results.
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }}
 }}
-LIMIT 12345
+
 """
 
 

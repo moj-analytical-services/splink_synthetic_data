@@ -1,25 +1,32 @@
-# SELECT ?given_name ?given_nameLabel ?short_name ?transliteration  ?said_to_be_the_same_asLabel ?nickname WHERE {
-#   ?given_name (wdt:P31/(wdt:P279*)) wd:Q202444.
-#   VALUES ?given_name { wd:Q4927524}
+import time
 
 
-#   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-#   OPTIONAL { ?given_name wdt:P1813 ?short_name. }
-#   OPTIONAL { ?given_name wdt:P2440 ?transliteration. }
-#   OPTIONAL { ?given_name wdt:P460 ?said_to_be_the_same_as. }
-#   OPTIONAL { ?given_name wdt:P1449 ?nickname. }
-# }
-# LIMIT 10
+from query_wikidata import (
+    query_with_offset,
+    dedupe_and_clean_results,
+    get_readable_columns,
+    QUERY_HUMAN,
+    get_standardised_name_table,
+)
+import pandas as pd
 
+# %%
 
-QUERY_SHORT_NAME = """
-SELECT ?given_name ?given_nameLabel ?short_name  {
-  ?given_name (wdt:P31/(wdt:P279*)) wd:Q202444.
-  VALUES ?given_name { wd:Q4927524}
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  OPTIONAL { ?given_name wdt:P1813 ?short_name. }
+# ("transliteration", "P2440"),("short_name", "P1813"),
+name_tuples = [
+    ("said_to_be_the_same_as", "P460"),
+    ("nickname", "P1449"),
+]
 
+t = name_tuples[0]
 
-}
-LIMIT 100
-"""
+for page in range(26, 30, 1):
+    pagesize = 5000
+    df = get_standardised_name_table(t[0], t[1], page, pagesize)
+    print(len(df))
+    df = df.drop_duplicates()
+    print(len(df))
+    df.to_parquet(
+        f"raw_data/names/stbtsa2_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet"
+    )
+    time.sleep(20)

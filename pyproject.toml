@@ -9,10 +9,13 @@ python = "^3.8"
 pandas = "^1.2.5"
 rdflib = "^5.0.0"
 duckdb = "^0.2.7"
+SPARQLWrapper = "^1.8.5"
+pyarrow = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 duckdb = "^0.2.7"
 flake8 = "^3.9.2"
+black = "^21.6b0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
