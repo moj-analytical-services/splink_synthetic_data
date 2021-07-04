@@ -12,14 +12,14 @@ person = pd.read_parquet(
 pc = pd.read_parquet(
     "processed_data/step_2_person_postcode_lookups/page000_0_to_2000.parquet"
 )
+
 # %%
 
-import duckdb
 
 query = """
 select * from
-(SELECT *, row_number() over (partition by postcode) as row_num
-FROM 'price_paid_address_only.parquet') as a
+
+FROM 'processed_data/step_5_addresses/postcode_address_with_rownum.parquet') as a
 where row_num = 1
 
 
@@ -71,7 +71,6 @@ select
     humanaltlabel as alt_full_names,
     given_namelabel as forename,
     family_namelabel as surname,
-
     place_birthlabel as place_birth,
     birth_countrylabel as birth_country,
     sex_or_genderlabel as gender,
@@ -95,6 +94,7 @@ limit 20
 """
 final = duckdb.query(query).to_df()
 
+
 # %%
-final.to_csv("sample_data.csv", index=False)
+one_postcode_per_person.sample(10)
 # %%

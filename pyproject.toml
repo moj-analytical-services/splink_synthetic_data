@@ -17,6 +17,7 @@ requests = "^2.25.1"
 duckdb = "^0.2.7"
 flake8 = "^3.9.2"
 black = "^21.6b0"
+ipykernel = "^6.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

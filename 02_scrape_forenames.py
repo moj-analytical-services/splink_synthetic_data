@@ -1,11 +1,7 @@
 import time
 
 
-from query_wikidata import (
-    query_with_offset,
-    dedupe_and_clean_results,
-    get_readable_columns,
-    QUERY_HUMAN,
+from scrape_wikidata.query_wikidata import (
     get_standardised_name_table,
 )
 import pandas as pd
