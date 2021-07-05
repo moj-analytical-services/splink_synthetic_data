@@ -71,3 +71,32 @@ postcode_address_with_rownum = duckdb.query(query).to_df()
 postcode_address_with_rownum.to_parquet(
     "processed_data/step_5_addresses/postcode_address_with_rownum.parquet", index=False
 )
+
+# Use spark to get array of addresses from which to select
+from pyspark.context import SparkContext
+from pyspark.sql import SparkSession
+
+sc = SparkContext.getOrCreate()
+spark = SparkSession(sc)
+
+df_addresses = spark.read.parquet(
+    "scrape_wikidata/processed_data/step_5_addresses/postcode_address_with_rownum.parquet"
+)
+df_addresses.createOrReplaceTempView("df_addresses")
+
+sql = """
+
+select postcode, collect_list(to_json(struct(flat_unit_saon, house_number_paon, street, locality,town_city,district, county, postcode))) as address_array
+from
+df_addresses
+
+group by postcode
+
+"""
+
+addresses_as_array = spark.sql(sql)
+addresses_as_array.createOrReplaceTempView(f"addresses_as_array")
+addresses_as_array = addresses_as_array.repartition(1)
+addresses_as_array.write.mode("append").parquet(
+    "scrape_wikidata/processed_data/step_5_addresses/addresses_as_array/"
+)
