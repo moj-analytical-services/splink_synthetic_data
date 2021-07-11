@@ -12,6 +12,7 @@ duckdb = "^0.2.7"
 SPARQLWrapper = "^1.8.5"
 pyarrow = "^4.0.1"
 requests = "^2.25.1"
+stackprinter = "^0.2.5"
 
 [tool.poetry.dev-dependencies]
 duckdb = "^0.2.7"
