@@ -1,3 +1,4 @@
+geco/*
 poetry.lock
 
 *.csv
@@ -16,3 +17,6 @@ poetry.lock
 .RData
 .Ruserdata
 
+*_SUCCESS*
+*/_SUCCESS*
+*.part*

@@ -136,8 +136,14 @@ def point_to_perturbed_lat_lng(point_text, limit=5):
 def get_postcode(x):
     if x:
         if x["result"]:
-
-            return [r["postcode"] for r in x["result"]]
+            res = []
+            for r in x["result"]:
+                d = {}
+                d["postcode"] = r["postcode"]
+                d["lat"] = r["latitude"]
+                d["lng"] = r["longitude"]
+                res.append(d)
+            return res
     else:
         return None
 
@@ -166,6 +172,7 @@ def postcode_lookup_from_cleaned_person_data(df, api_group_size=100):
     exploded = point_lists["geo_array"].explode("geo_array")
     df_results_1 = pd.DataFrame(list(exploded))
     df_results_1["nearby_postcodes"] = df_results_1["pc_response"].apply(get_postcode)
+
     df_results_1 = df_results_1[["point", "person", "nearby_postcodes"]]
     f1 = df_results_1["nearby_postcodes"].isnull()
 
