@@ -131,7 +131,7 @@ def query_with_offset(query, page=0, pagesize=500):
 # VALUES ?lan {{ wd:Q1860}}
 #   ?given_name wdt:{id} ?{col_name};
 #    wdt:P407 ?lan.
-QUERY_GIVEN_NAME_TEMPLATE = """
+QUERY_GIVEN_NAME_TEMPLATE = """\
 SELECT ?given_name ?given_nameLabel ?{col_labelled} ?languageLabel
 
 WITH {{

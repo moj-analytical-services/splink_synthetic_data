@@ -13,7 +13,20 @@ def pipe_to_array(x):
         return x
 
 
+def remove_place_england(df):
+    f1 = df["place_birthLabel"] == "England"
+    df.loc[f1, "birth_coordinates"] = None
+    df.loc[f1, "place_birthLabel"] = None
+
+    f1 = df["residenceLabel"] == "England"
+    df.loc[f1, "residence_coordinates"] = None
+    df.loc[f1, "residenceLabel"] = None
+    return df
+
+
 def dedupe_and_clean_results(df_to_q):
+
+    df_to_q = remove_place_england(df_to_q)
 
     tem = "string_agg(distinct {field}, ' | ') as {field}"
 

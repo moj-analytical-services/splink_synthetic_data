@@ -8,6 +8,7 @@ from urllib.parse import urlparse, urlunparse, urlencode
 
 
 API_BASE_URL = "http://api.postcodes.io"
+API_BASE_URL = "http://localhost:8000"
 
 
 class Api(object):
