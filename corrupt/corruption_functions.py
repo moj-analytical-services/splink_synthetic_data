@@ -4,6 +4,7 @@ from corrupt.geco_corrupt import (
     CorruptValueQuerty,
 )
 import numpy as np
+import random
 
 ## Citizenship
 def country_citizenship_exact_match(master_record, corrupted_record={}):
@@ -26,11 +27,7 @@ def country_citizenship_random(master_record, corrupted_record={}):
     corrupted_record["citizenship"] = np.random.choice(
         master_record["country_citizenship"]
     )
-    if corrupted_record["citizenship"] in (
-        "United Kingdom",
-        "United Kingdom of Great Britain and Ireland",
-    ):
-        corrupted_record["citizenship"] = "UK"
+
     return corrupted_record
 
 
@@ -154,6 +151,7 @@ def corrupt_using_said_to_be_same_as(
 
     master_name = corrupted_record["full_name"]
     master_name_parts = master_name.split(" ")
+    master_name_parts = [p for p in master_name_parts if len(p.replace(".", "")) > 1]
     alt_name_lookup = get_alt_name_lookup(master_record)
 
     new_name = []
@@ -161,6 +159,7 @@ def corrupt_using_said_to_be_same_as(
 
     # Use the full name - important because this includes the order of forenames and surname
     for name_part in master_name_parts:
+
         if name_part in alt_name_lookup:
             names_weights = alt_name_lookup[name_part]
             this_name = random_choice_from_names_weights(names_weights, name_part)
@@ -170,20 +169,27 @@ def corrupt_using_said_to_be_same_as(
             used_names = update_used_names(used_names, names_weights)
         else:
             new_name.append(name_part)
+
         used_names = used_names.union([name_part])
 
     # There may be given names which are not in the master name - if so insert into the middle
     list_of_names_parts = list(alt_name_lookup.keys())
     for name_part in list_of_names_parts:
         if name_part not in used_names:
-            print(f"{name_part} not in {master_name} or {used_names}")
+
             if name_part not in master_name_parts:
                 names_weights = alt_name_lookup[name_part]
                 names_weights = alt_name_lookup[name_part]
                 this_name = random_choice_from_names_weights(names_weights, name_part)
-                new_name.insert(-1, this_name)
-                corrupted_record["num_name_corruptions"] += 1
+                if this_name not in used_names:
+                    new_name.insert(-1, this_name)
+                    corrupted_record["num_name_corruptions"] += 1
 
+    first = new_name.pop(0)
+    last = new_name.pop()
+    new_name = [n for n in new_name if random.uniform(0, 1) > 0.5]
+
+    new_name = [first] + new_name + [last]
     corrupted_record["full_name"] = " ".join(new_name)
     return corrupted_record
 

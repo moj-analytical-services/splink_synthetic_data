@@ -88,3 +88,18 @@ class Api(object):
         except ValueError:
             data = json.loads('{"Error": "Unknown error while parsing response"}')
         return data
+
+
+import requests
+import json
+
+
+def get_random_postcode(x):
+    r = requests.get("http://127.0.0.1:8000/random/postcodes")
+    r = json.loads(r.text)["result"]
+
+    random_postcode = {}
+    random_postcode["postcode"] = r["postcode"]
+    random_postcode["lat"] = r["latitude"]
+    random_postcode["lng"] = r["longitude"]
+    return random_postcode

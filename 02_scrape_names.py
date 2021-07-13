@@ -139,4 +139,5 @@ df.to_parquet(
     "scrape_wikidata/processed_data/step_3_alt_name_lookups/family_name.parquet",
     index=False,
 )
+
 # %%

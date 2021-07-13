@@ -1,6 +1,7 @@
 # %%
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
+
 
 # %%
 import pandas as pd
@@ -91,7 +92,9 @@ cc = [
 
 df = pd.read_parquet("scrape_wikidata/clean_data/master_data")
 df5 = df.sample(10)
-# df5 = df[df["human"].isin(["Q16193339", "Q6223445"])]
+# df5 = df[df["human"].isin(["Q16193339", "Q6223445", "Q20942797"])]
+# df5 = df[df["human"].isin(["Q20942797"])]
+
 
 records = df5.to_dict(orient="records")
 display(df5)
@@ -107,6 +110,7 @@ for master_record in records:
     corrupted_records.append(uncorrupted_record)
 
     num_corrupted_records = np.random.choice(zipf_dist["vals"], p=zipf_dist["weights"])
+
     for i in range(num_corrupted_records):
         corrupted_record = {"num_corruptions": 0}
         for c in cc:
