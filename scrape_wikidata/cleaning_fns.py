@@ -155,6 +155,9 @@ def get_postcode(x):
                 d["postcode"] = r["postcode"]
                 d["lat"] = r["latitude"]
                 d["lng"] = r["longitude"]
+                d["district"] = r.get("admin_district", None)
+                d["ward"] = r.get("ward_district", None)
+                d["parish"] = r.get("parish", None)
                 res.append(d)
             return res
     else:

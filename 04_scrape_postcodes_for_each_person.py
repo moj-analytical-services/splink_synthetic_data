@@ -38,9 +38,57 @@ for i, f in enumerate(files):
 # import pandas as pd
 # conn = psycopg2.connect("dbname='postcodesiodb' user='postcodesio' host='localhost' password='secret'")
 # pd.read_sql("SELECT * FROM pg_catalog.pg_tables;", conn).head(2)
-# df = pd.read_sql("select postcode, latitude, longitude from postcodes where latitude is not null", conn)
+
+# sql = """
+# select
+#     pc.postcode,
+#     pc.latitude as lat,
+#     pc.longitude as lng,
+#     w.name as ward,
+#     p.name as parish,
+#     d.name as district
+# from postcodes as pc
+
+# left join wards as w
+# on pc.admin_ward_id = w.code
+
+# left join districts as d
+# on pc.admin_district_id = d.code
+
+# left join parishes as p
+# on pc.parish_id = p.code
+
+
+# where p.name is not null and latitude is not null
+
+# """
+# df = pd.read_sql(sql, conn)
 # df_r = df.sample(n=1000000, replace=True)
 # df_r = df_r.reset_index().reset_index().drop("index",axis=1).rename(columns={"level_0":"row_num"})
 # df_r.to_parquet(
-#     "scrape_wikidata/raw_data/postcodes/random_postcodes.parquet", index=False
+#     "scrape_wikidata/raw_data/random_postcodes/flat/random_postcodes.parquet", index=False
+# )
+
+# df = spark.read.parquet("scrape_wikidata/raw_data/random_postcodes/flat/random_postcodes.parquet")
+
+# df.limit(2).toPandas()
+
+# sql = """
+# select
+#     row_num,
+#     struct(
+#         postcode,
+#         lat,
+#         lng,
+#         ward,
+#         parish,
+#         district
+#     ) as pc
+# from df
+
+# """
+# df.createOrReplaceTempView("df")
+# df = spark.sql(sql)
+# df.write.mode('overwrite').parquet(
+#     "scrape_wikidata/raw_data/random_postcodes/struct/"
 # )

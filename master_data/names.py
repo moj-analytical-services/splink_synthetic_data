@@ -40,20 +40,21 @@ def get_df_filter(spark):
     data_list = [
         {
             "to_filter_out": [
-                "Rt.",
-                "Hon.",
-                "Sir",
-                "Rev.",
-                "Lady",
-                "Duke",
+                "rt.",
+                "hon.",
+                "sir",
+                "rev.",
+                "lady",
+                "duke",
                 "of",
-                "Dr.",
-                "Dr",
-                "Baron",
-                "The",
+                "dr.",
+                "dr",
+                "baron",
+                "the",
                 "and",
                 "last",
-                "Baronet",
+                "baronet",
+                "barron",
             ]
         },
     ]
