@@ -1,7 +1,6 @@
 import numpy as np
-
+import random
 from corrupt.geco_corrupt import (
-    CorruptValueNumpad,
     position_mod_uniform,
     CorruptValueQuerty,
 )
@@ -20,6 +19,55 @@ from corrupt.geco_corrupt import (
 # 2. Corrupt location
 #    - Always use the parent's location if exists.  This deliverately creates 'possibly problematic' clusters of records
 #    - Otherwise, if the person has more than one 'real' location,
+
+
+def location_master_record(master_record):
+    # Some master records have a birth place.
+    # If we have a real birth place, use it - adding variants on the name of the birthplace
+    if master_record["birth_place"] is not None:
+        chosen_birth_place_options = []
+        chosen_birth_place_options.append(master_record["birth_place"])
+
+        loc = get_first_location_if_exists(master_record)
+        if loc is not None:
+            choices = [loc["district"], loc["ward"], clean_unparished(loc["parish"])]
+            choices = [c for c in choices if c is not None]
+            chosen_birth_place_options.extend(choices)
+        else:
+            # Weight options place rather than country
+            chosen_birth_place_options.append(master_record["birth_place"])
+            chosen_birth_place_options.append(master_record["birth_place"])
+            chosen_birth_place_options.append(master_record["birth_country"])
+    else:
+        # If we have no real birth place, get birth place from random location
+        chosen_birth_place_options = []
+        loc = get_first_location_if_exists(master_record)
+        if loc is None:
+            loc = get_predetermined_random_location(master_record)
+        chosen_birth_place_options = [
+            loc["district"],
+            loc["ward"],
+            clean_unparished(loc["parish"]),
+        ]
+        chosen_birth_place_options = [
+            c for c in chosen_birth_place_options if c is not None
+        ]
+    master_record["_chosen_birth_place"] = chosen_birth_place_options[0]
+    master_record["_chosen_birth_place_options"] = chosen_birth_place_options
+
+    # Choose location for master record
+    trial_fns = [
+        get_parent_child_location_if_exists,
+        get_first_location_if_exists,
+        get_predetermined_random_location,
+    ]
+
+    loc = None
+    for fn in trial_fns:
+        if loc is None:
+            loc = fn(master_record)
+    master_record["_chosen_location"] = loc
+    return master_record
 
 
 def get_parent_child_location_if_exists(master_record):
@@ -59,60 +107,28 @@ def get_first_location_if_exists(master_record):
 
 
 def clean_unparished(x):
-    return x.replace(", unparished area", "")
-
-
-def get_exact_birth_place(master_record, uncorrupted_record):
-    if master_record["birth_place"] is not None:
-        uncorrupted_record["birth_place"] = master_record["birth_place"]
-        master_record["_chosen_birth_place"] = master_record["birth_place"]
+    if x is not None:
+        return x.replace(", unparished area", "")
     else:
-        loc = master_record["_loc"]
-        choices = [loc["district"], loc["ward"], loc["parish"]]
-        choices = [c for c in choices if c is not None]
-        choice = np.random.choice(choices)
-        uncorrupted_record["birth_place"] = clean_unparished(choice)
-        master_record["_chosen_birth_place"] = clean_unparished(choice)
-    return uncorrupted_record
+        return x
 
 
-def get_random_birth_place(master_record, uncorrupted_record):
+def get_random_birth_place(master_record, corrupted_record={}):
 
-    birth_place_1 = master_record["_chosen_birth_place"]
-
-    loc = get_first_location_if_exists(master_record)
-    if loc is None:
-        loc = get_predetermined_random_location(master_record)
-
-    choices = [birth_place_1, loc["district"], loc["ward"], loc["parish"]]
-    choices = [c for c in choices if c is not None]
+    choices = master_record["_chosen_birth_place_options"]
     choice = np.random.choice(choices)
-    uncorrupted_record["birth_place"] = clean_unparished(choice)
-    return uncorrupted_record
+    corrupted_record["birth_place"] = choice
+    return corrupted_record
 
 
 def location_exact_match(master_record, corrupted_record={}):
 
-    trial_fns = [
-        get_parent_child_location_if_exists,
-        get_first_location_if_exists,
-        get_predetermined_random_location,
-    ]
-
-    loc = None
-    for fn in trial_fns:
-        if loc is None:
-            loc = fn(master_record)
-
-    master_record["_loc"] = loc
+    loc = master_record["_chosen_location"]
     corrupted_record["postcode"] = loc["postcode"]
     corrupted_record["lat"] = loc["lat"]
     corrupted_record["lng"] = loc["lng"]
 
-    if "_chosen_birth_place" not in master_record:
-        corrupted_record = get_exact_birth_place(master_record, corrupted_record)
-    else:
-        corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
+    corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
 
     return corrupted_record
 
@@ -149,13 +165,9 @@ def corrupt_location(master_record, corrupted_record={}):
         corrupted_record["lat"] = loc["lat"]
         corrupted_record["lng"] = loc["lng"]
 
-    if "_chosen_birth_place" not in master_record:
-        corrupted_record = get_exact_birth_place(master_record, corrupted_record)
-    else:
-        corrupted_record = get_random_birth_place(master_record, corrupted_record)
-        # corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
+    corrupted_record = get_random_birth_place(master_record, corrupted_record)
 
-    if master_record["_loc"]["postcode"] != corrupted_record["postcode"]:
+    if master_record["_chosen_location"]["postcode"] != corrupted_record["postcode"]:
         corrupted_record["num_corruptions"] += 1
         corrupted_record["num_location_corruptions"] += 1
 
@@ -163,4 +175,14 @@ def corrupt_location(master_record, corrupted_record={}):
         corrupted_record["num_corruptions"] += 1
         corrupted_record["num_location_corruptions"] += 1
 
+    return corrupted_record
+
+
+def location_null(master_record, null_prob, corrupted_record={}):
+
+    if random.uniform(0, 1) < null_prob:
+        corrupted_record["birth_place"] = None
+
+    if random.uniform(0, 1) < null_prob:
+        corrupted_record["postcode"] = None
     return corrupted_record

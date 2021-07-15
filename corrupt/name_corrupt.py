@@ -35,9 +35,22 @@ def corrupt_full_name(master_record, corrupted_record={}):
 
     # Get list of labelled names and pick one
     list_of_names = []
+    list_of_alt_names = []
     list_of_names.append(master_record["humanlabel"])
     if master_record["humanaltlabel"] is not None:
         list_of_names.extend(master_record["humanaltlabel"])
+        list_of_alt_names = master_record["humanaltlabel"]
+
+    # If we have alt names, sometimes return an alt name
+    len_prob_lookup = {1: 0.25, 2: 0.33, 3: 0.5}
+
+    if len(list_of_names) > 1:
+        len_an = len(list_of_alt_names)
+        prob = len_prob_lookup.get(len_an, 0.75)
+        print(f"{len_an =} {prob =}")
+        if random.uniform(0, 1) < prob:
+            corrupted_record["full_name"] = np.random.choice(list_of_alt_names)
+            return corrupted_record
 
     corrupted_record["full_name"] = np.random.choice(list_of_names)
 
@@ -115,11 +128,7 @@ def corrupt_using_said_to_be_same_as(
                     new_name.insert(-1, this_name)
                     corrupted_record["num_name_corruptions"] += 1
 
-    first = new_name.pop(0)
-    last = new_name.pop()
-    new_name = [n for n in new_name if random.uniform(0, 1) > 0.5]
-
-    new_name = [first] + new_name + [last]
+    new_name = [n for n in new_name if n is not None]
     corrupted_record["full_name"] = " ".join(new_name)
     return corrupted_record
 
@@ -135,4 +144,37 @@ def corrupt_name_querty(master_record, corrupted_record={}):
             corrupted_record["full_name"]
         )
     corrupted_record["num_name_corruptions"] += 1
+    return corrupted_record
+
+
+def full_name_null(master_record, null_prob, corrupted_record={}):
+
+    new_name = corrupted_record["full_name"].split(" ")
+
+    try:
+        first = new_name.pop(0)
+    except IndexError:
+        first = None
+    try:
+        last = new_name.pop()
+    except IndexError:
+        last = None
+
+    # Erase middle names with probability 0.5
+    new_name = [n for n in new_name if random.uniform(0, 1) < 0.5]
+
+    # Erase first or last name with prob null prob
+    if random.uniform(0, 1) < null_prob:
+        if random.uniform(0, 1) < 0.5:
+            first = None
+        else:
+            last = None
+
+    new_name = [first] + new_name + [last]
+
+    new_name = [n for n in new_name if n is not None]
+    if len(new_name) > 0:
+        corrupted_record["full_name"] = " ".join(new_name)
+    else:
+        corrupted_record["full_name"] = None
     return corrupted_record
