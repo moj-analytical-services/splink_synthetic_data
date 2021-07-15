@@ -1,10 +1,13 @@
+# %%
 import numpy as np
 import random
 from corrupt.geco_corrupt import (
     position_mod_uniform,
     CorruptValueQuerty,
 )
-
+import math
+from scrape_wikidata.postcodes import Api
+from scrape_wikidata.cleaning_fns import get_postcode
 
 # Location corruption workflow:
 
@@ -72,6 +75,26 @@ def location_master_record(master_record):
         if loc is None:
             loc = fn(master_record)
     master_record["_chosen_location"] = loc
+
+    # Get two alternative locations, weighted towards nearby
+    # import numpy as np
+    # data = list(np.random.pareto(5, 2) * 100)
+    # data = pd.DataFrame({'d': data})
+    # alt.Chart(data).mark_bar().encode(
+    #     alt.X("d:Q",  bin=alt.Bin(extent=[0, 100], step=1)),
+    #     y='count()',
+    # )
+
+    distances = list(np.random.pareto(5, 3) * 100)
+
+    choices = []
+    for d in distances:
+        alt_loc = get_random_loc_at_distance(loc, d)
+        if alt_loc is not None:
+            choices.append(alt_loc[0])
+
+    master_record["_alt_loc_choices"] = choices
+
     return master_record
 
 
@@ -156,13 +179,23 @@ def corrupt_birth_place(master_record, corrupted_record={}):
     return corrupted_record
 
 
+def get_alternative_random_location(master_record):
+
+    alt_locs = master_record["_alt_loc_choices"]
+    alt_locs.append(master_record["_chosen_location"])
+
+    choice = np.random.choice(alt_locs)
+
+    return choice
+
+
 def corrupt_location(master_record, corrupted_record={}):
 
     corrupted_record["num_location_corruptions"] = 0
     trial_fns = [
         get_parent_child_location_if_exists,
         get_alternative_location_if_exists,
-        get_nearby_location_if_exists,
+        get_alternative_random_location,
     ]
 
     loc = None
@@ -170,23 +203,9 @@ def corrupt_location(master_record, corrupted_record={}):
         if loc is None:
             loc = fn(master_record)
 
-    # If loc is still none, then the only location
-    # we have a single, preset random location
-    if loc is None:
-        loc = get_predetermined_random_location(master_record)
-        querty_corruptor = CorruptValueQuerty(
-            position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
-        )
-
-        pc = querty_corruptor.corrupt_value(loc["postcode"])
-        corrupted_record["postcode"] = pc
-
-        corrupted_record["lat"] = None
-        corrupted_record["lng"] = None
-    else:
-        corrupted_record["postcode"] = loc["postcode"]
-        corrupted_record["lat"] = loc["lat"]
-        corrupted_record["lng"] = loc["lng"]
+    corrupted_record["postcode"] = loc["postcode"]
+    corrupted_record["lat"] = loc["lat"]
+    corrupted_record["lng"] = loc["lng"]
 
     if master_record["_chosen_location"]["postcode"] != corrupted_record["postcode"]:
         corrupted_record["num_corruptions"] += 1
@@ -202,3 +221,63 @@ def location_null(master_record, null_prob, corrupted_record={}):
         corrupted_record["lat"] = None
         corrupted_record["lng"] = None
     return corrupted_record
+
+
+def haversine(lat1, lng1, lat2, lng2):
+
+    # convert decimal degrees to radians
+    lng1, lat1, lng2, lat2 = map(math.radians, [lng1, lat1, lng2, lat2])
+
+    # haversine formula
+    dlon = lng2 - lng1
+    dlat = lat2 - lat1
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.asin(math.sqrt(a))
+    r = 6371  # Radius of earth in kilometers. Use 3956 for miles
+    return c * r
+
+
+def create_random_point(lat, lng, distance_km):
+
+    radians = random.uniform(0, 2 * math.pi)
+
+    dx = math.sin(radians) * distance_km
+    dy = math.cos(radians) * distance_km
+
+    r_earth = 6371  # Radius of earth in kilometers.
+
+    new_lat = lat + (dy / r_earth) * (180 / math.pi)
+    new_lng = lng + (dx / r_earth) * (180 / math.pi) / math.cos(lat * math.pi / 180)
+
+    return (new_lat, new_lng)
+
+
+def get_random_loc_at_distance(loc, distance_km):
+    lat = loc["lat"]
+    lng = loc["lng"]
+    new_lat, new_lng = create_random_point(lat, lng, distance_km)
+
+    api = Api()
+    point = {"latitude": new_lat, "longitude": new_lng, "limit": 1, "radius": 1000}
+
+    payload = {
+        "geolocations": [
+            point,
+        ]
+    }
+
+    # print("making postcodes.io bulk API request")
+    response = api.get_bulk_reverse_geocode(payload)
+
+    response_array = response["result"]
+    if len(response_array) > 0:
+
+        return get_postcode(response_array[0])
+    else:
+        return None
+
+
+# %%

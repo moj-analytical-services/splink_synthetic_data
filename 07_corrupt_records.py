@@ -1,6 +1,6 @@
 # %%
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 # display = print
 
 
@@ -19,7 +19,7 @@ from corrupt.location_corrupt import (
     location_null,
     birth_place_master_record,
     birth_place_exact_match,
-    corrupt_birth_place
+    corrupt_birth_place,
 )
 
 from corrupt.gender_corrupt import gender_exact_match, gender_corrupt
@@ -63,7 +63,7 @@ cc = [
         "null_function": basic_null_fn("dob"),
         "null_probability": 0.2,
     },
-       {
+    {
         "col_name": "birth_place",
         "m_probabilities": [0.9, 0.1],
         "choose_master_data": birth_place_master_record,
@@ -139,17 +139,18 @@ for i, master_record in enumerate(records):
 
             p = c["null_probability"]
             fn = c["null_function"]
-            corrupted_record = fn(master_record, null_prob=p, corrupted_record=corrupted_record)
+            corrupted_record = fn(
+                master_record, null_prob=p, corrupted_record=corrupted_record
+            )
 
         corrupted_records.append(corrupted_record)
 
 corrupted_df = pd.DataFrame(corrupted_records)
-for h in df5["human"]:
-    print(("-" * 80).join(["\n"] * 6))
-    display(df5[df5["human"] == h])
-    display(corrupted_df[corrupted_df["id"] == h])
+display(corrupted_df)
+# for h in df5["human"]:
+#     print(("-" * 80).join(["\n"] * 6))
+#     display(df5[df5["human"] == h])
+#     display(corrupted_df[corrupted_df["id"] == h])
 
-
-# %%
 
 # %%

@@ -47,7 +47,7 @@ def corrupt_full_name(master_record, corrupted_record={}):
     if len(list_of_names) > 1:
         len_an = len(list_of_alt_names)
         prob = len_prob_lookup.get(len_an, 0.75)
-        print(f"{len_an =} {prob =}")
+
         if random.uniform(0, 1) < prob:
             corrupted_record["full_name"] = np.random.choice(list_of_alt_names)
             return corrupted_record
