@@ -17,6 +17,9 @@ from corrupt.location_corrupt import (
     corrupt_location,
     location_exact_match,
     location_null,
+    birth_place_master_record,
+    birth_place_exact_match,
+    corrupt_birth_place
 )
 
 from corrupt.gender_corrupt import gender_exact_match, gender_corrupt
@@ -60,9 +63,20 @@ cc = [
         "null_function": basic_null_fn("dob"),
         "null_probability": 0.2,
     },
+       {
+        "col_name": "birth_place",
+        "m_probabilities": [0.9, 0.1],
+        "choose_master_data": birth_place_master_record,
+        "corruption_functions": [
+            corrupt_birth_place,
+            birth_place_exact_match,
+        ],
+        "null_function": basic_null_fn("birth_place"),
+        "null_probability": 0.2,
+    },
     {
         "col_name": "location",
-        "m_probabilities": [1.0, 0.0],
+        "m_probabilities": [0.5, 0.5],
         "choose_master_data": location_master_record,
         "corruption_functions": [
             corrupt_location,
@@ -135,5 +149,7 @@ for h in df5["human"]:
     display(df5[df5["human"] == h])
     display(corrupted_df[corrupted_df["id"] == h])
 
+
+# %%
 
 # %%

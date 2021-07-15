@@ -21,7 +21,7 @@ from corrupt.geco_corrupt import (
 #    - Otherwise, if the person has more than one 'real' location,
 
 
-def location_master_record(master_record):
+def birth_place_master_record(master_record):
     # Some master records have a birth place.
     # If we have a real birth place, use it - adding variants on the name of the birthplace
     if master_record["birth_place"] is not None:
@@ -54,6 +54,11 @@ def location_master_record(master_record):
         ]
     master_record["_chosen_birth_place"] = chosen_birth_place_options[0]
     master_record["_chosen_birth_place_options"] = chosen_birth_place_options
+
+    return master_record
+
+
+def location_master_record(master_record):
 
     # Choose location for master record
     trial_fns = [
@@ -116,7 +121,9 @@ def clean_unparished(x):
 def get_random_birth_place(master_record, corrupted_record={}):
 
     choices = master_record["_chosen_birth_place_options"]
+
     choice = np.random.choice(choices)
+
     corrupted_record["birth_place"] = choice
     return corrupted_record
 
@@ -128,7 +135,23 @@ def location_exact_match(master_record, corrupted_record={}):
     corrupted_record["lat"] = loc["lat"]
     corrupted_record["lng"] = loc["lng"]
 
+    return corrupted_record
+
+
+def birth_place_exact_match(master_record, corrupted_record={}):
     corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
+    return corrupted_record
+
+
+def corrupt_birth_place(master_record, corrupted_record={}):
+
+    corrupted_record["num_birth_place_corruptions"] = 0
+
+    corrupted_record = get_random_birth_place(master_record, corrupted_record)
+
+    if master_record["_chosen_birth_place"] != corrupted_record["birth_place"]:
+        corrupted_record["num_corruptions"] += 1
+        corrupted_record["num_birth_place_corruptions"] += 1
 
     return corrupted_record
 
@@ -165,13 +188,7 @@ def corrupt_location(master_record, corrupted_record={}):
         corrupted_record["lat"] = loc["lat"]
         corrupted_record["lng"] = loc["lng"]
 
-    corrupted_record = get_random_birth_place(master_record, corrupted_record)
-
     if master_record["_chosen_location"]["postcode"] != corrupted_record["postcode"]:
-        corrupted_record["num_corruptions"] += 1
-        corrupted_record["num_location_corruptions"] += 1
-
-    if master_record["_chosen_birth_place"] != corrupted_record["birth_place"]:
         corrupted_record["num_corruptions"] += 1
         corrupted_record["num_location_corruptions"] += 1
 
@@ -181,8 +198,7 @@ def corrupt_location(master_record, corrupted_record={}):
 def location_null(master_record, null_prob, corrupted_record={}):
 
     if random.uniform(0, 1) < null_prob:
-        corrupted_record["birth_place"] = None
-
-    if random.uniform(0, 1) < null_prob:
         corrupted_record["postcode"] = None
+        corrupted_record["lat"] = None
+        corrupted_record["lng"] = None
     return corrupted_record
