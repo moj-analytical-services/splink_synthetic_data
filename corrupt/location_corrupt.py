@@ -200,159 +200,69 @@ def birth_place_master_record(master_record):
 # # 2. Corrupt by choosing a valid postcode very close by
 # # 3. Corrupt by making a typo in the postcode
 
-# # def birth_place_master_record2(master_record):
+
+def location_exact_match(master_record, corrupted_record={}):
+
+    loc = master_record["_primary_loc"][0]
+    corrupted_record["postcode"] = loc["postcode"]
+    corrupted_record["lat"] = loc["lat"]
+    corrupted_record["lng"] = loc["lng"]
+
+    return corrupted_record
 
 
-# def location_master_record(master_record):
+def corrupt_location_move_house(master_record, corrupted_record={}):
 
-#     # Choose location for master record
-#     trial_fns = [
-#         get_parent_location_if_exists,
-#         get_first_location_if_exists,
-#         get_predetermined_random_location,
-#     ]
+    locs = master_record["_all_locs"]
+    loc = np.random.choice(locs)[0]
+    corrupted_record["postcode"] = loc["postcode"]
+    corrupted_record["lat"] = loc["lat"]
+    corrupted_record["lng"] = loc["lng"]
 
-#     loc = None
-#     for fn in trial_fns:
-#         if loc is None:
-#             loc = fn(master_record)
-#     master_record["_chosen_location"] = loc
+    if master_record["_primary_loc"][0]["postcode"] != corrupted_record["postcode"]:
+        corrupted_record["num_corruptions"] += 1
+        corrupted_record["num_location_corruptions"] += 1
 
-#     # Get two alternative locations, weighted towards nearby
-#     # import numpy as np
-#     # data = list(np.random.pareto(5, 2) * 100)
-#     # data = pd.DataFrame({'d': data})
-#     # alt.Chart(data).mark_bar().encode(
-#     #     alt.X("d:Q",  bin=alt.Bin(extent=[0, 100], step=1)),
-#     #     y='count()',
-#     # )
-
-#     distances = list(np.random.pareto(5, 3) * 100)
-
-#     choices = []
-#     for d in distances:
-#         alt_loc = get_random_loc_at_distance(loc, d)
-#         if alt_loc is not None:
-#             choices.append(alt_loc[0])
-
-#     master_record["_alt_loc_choices"] = choices
-
-#     return master_record
+    return corrupted_record
 
 
-# def get_parent_location_if_exists(master_record):
-#     cols = ["parent_fake_loc", "parent_random_loc"]
-#     for col in cols:
-#         if master_record[col] is not None:
-#             return master_record[col]
-#     return None
+def corrupt_location_nearby_postcode_house(master_record, corrupted_record={}):
+    locs = master_record["_primary_loc"]
+    loc = np.random.choice(locs)[0]
+    corrupted_record["postcode"] = loc["postcode"]
+    corrupted_record["lat"] = loc["lat"]
+    corrupted_record["lng"] = loc["lng"]
+
+    if master_record["_primary_loc"][0]["postcode"] != corrupted_record["postcode"]:
+        corrupted_record["num_corruptions"] += 1
+        corrupted_record["num_location_corruptions"] += 1
+
+    return corrupted_record
 
 
-# def get_alternative_location_if_exists(master_record):
-#     if master_record["nearby_postcodes"] is None:
-#         return None
+def corrupt_location_postcode_typo(master_record, corrupted_record={}):
 
-#     num_different_locations = len(master_record["nearby_postcodes"])
-#     if num_different_locations > 1:
-#         nearby_postcodes = np.random.choice(master_record["nearby_postcodes"])
-#         return nearby_postcodes[0]
-#     else:
-#         return None
+    querty_corruptor = CorruptValueQuerty(
+        position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
+    )
+    pc = master_record["_primary_loc"][0]["postcode"]
 
+    pc_c = querty_corruptor.corrupt_value(pc)
+    corrupted_record["postcode"] = pc_c
+    corrupted_record["lat"] = None
+    corrupted_record["lng"] = None
 
-# def get_nearby_location_if_exists(master_record):
-#     if master_record["nearby_postcodes"] is None:
-#         return None
-#     return np.random.choice(master_record["nearby_postcodes"][0])
+    if master_record["_primary_loc"][0]["postcode"] != corrupted_record["postcode"]:
+        corrupted_record["num_corruptions"] += 1
+        corrupted_record["num_location_corruptions"] += 1
 
-
-# def get_predetermined_random_location(master_record):
-#     return master_record["random_pc"]
+    return corrupted_record
 
 
-# def get_first_location_if_exists(master_record):
-#     if master_record["nearby_postcodes"] is None:
-#         return None
-#     return master_record["nearby_postcodes"][0][0]
+def location_null(master_record, null_prob, corrupted_record={}):
 
-
-# def get_random_birth_place(master_record, corrupted_record={}):
-
-#     choices = master_record["_chosen_birth_place_options"]
-
-#     choice = np.random.choice(choices)
-
-#     corrupted_record["birth_place"] = choice
-#     return corrupted_record
-
-
-# def location_exact_match(master_record, corrupted_record={}):
-
-#     loc = master_record["_chosen_location"]
-#     corrupted_record["postcode"] = loc["postcode"]
-#     corrupted_record["lat"] = loc["lat"]
-#     corrupted_record["lng"] = loc["lng"]
-
-#     return corrupted_record
-
-
-# def birth_place_exact_match(master_record, corrupted_record={}):
-#     corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
-#     return corrupted_record
-
-
-# def corrupt_birth_place(master_record, corrupted_record={}):
-
-#     corrupted_record["num_birth_place_corruptions"] = 0
-
-#     corrupted_record = get_random_birth_place(master_record, corrupted_record)
-
-#     if master_record["_chosen_birth_place"] != corrupted_record["birth_place"]:
-#         corrupted_record["num_corruptions"] += 1
-#         corrupted_record["num_birth_place_corruptions"] += 1
-
-#     return corrupted_record
-
-
-# def get_alternative_random_location(master_record):
-
-#     alt_locs = master_record["_alt_loc_choices"]
-#     alt_locs.append(master_record["_chosen_location"])
-
-#     choice = np.random.choice(alt_locs)
-
-#     return choice
-
-
-# def corrupt_location(master_record, corrupted_record={}):
-
-#     corrupted_record["num_location_corruptions"] = 0
-#     trial_fns = [
-#         get_parent_location_if_exists,
-#         get_alternative_location_if_exists,
-#         get_alternative_random_location,
-#     ]
-
-#     loc = None
-#     for fn in trial_fns:
-#         if loc is None:
-#             loc = fn(master_record)
-
-#     corrupted_record["postcode"] = loc["postcode"]
-#     corrupted_record["lat"] = loc["lat"]
-#     corrupted_record["lng"] = loc["lng"]
-
-#     if master_record["_chosen_location"]["postcode"] != corrupted_record["postcode"]:
-#         corrupted_record["num_corruptions"] += 1
-#         corrupted_record["num_location_corruptions"] += 1
-
-#     return corrupted_record
-
-
-# def location_null(master_record, null_prob, corrupted_record={}):
-
-#     if random.uniform(0, 1) < null_prob:
-#         corrupted_record["postcode"] = None
-#         corrupted_record["lat"] = None
-#         corrupted_record["lng"] = None
-#     return corrupted_record
+    if random.uniform(0, 1) < null_prob:
+        corrupted_record["postcode"] = None
+        corrupted_record["lat"] = None
+        corrupted_record["lng"] = None
+    return corrupted_record
