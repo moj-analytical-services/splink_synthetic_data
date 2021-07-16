@@ -17,9 +17,11 @@ files = sorted(
 for i, f in enumerate(files):
 
     base = os.path.basename(f)
+
     out_path = f"scrape_wikidata/processed_data/step_2_person_postcode_lookups/{base}"
 
     if not os.path.exists(out_path):
+        # if os.path.exists(out_path):
 
         df = pd.read_parquet(f)
         pcs = postcode_lookup_from_cleaned_person_data(df)

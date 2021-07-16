@@ -91,28 +91,51 @@ from scrape_wikidata.postcodes import Api
 
 def points_to_array(x):
     h = x[0]
-    p1 = x[1]
-    if p1:
-        p1 = p1.split(" | ")
+
+    all_points = []
+
+    birth_place_points = x[1]
+    if birth_place_points:
+        birth_place_points = set(birth_place_points.split(" | "))
     else:
-        p1 = []
-    p2 = x[2]
-    if p2:
-        p2 = p2.split(" | ")
+        birth_place_points = []
+    birth_place_points = [
+        {"point_type": "birth_place", "point": p} for p in birth_place_points
+    ]
+
+    all_points.extend(birth_place_points)
+
+    residence_points = x[2]
+    if residence_points:
+        residence_points = set(residence_points.split(" | "))
     else:
-        p2 = []
+        residence_points = []
+    residence_points = [
+        {"point_type": "residence", "point": p} for p in residence_points
+    ]
 
-    p1.extend(p2)
+    all_points.extend(residence_points)
 
-    p1 = list(set(p1))
+    random_points = x[3]
+    if random_points:
+        random_points = set(random_points.split(" | "))
+    else:
+        random_points = []
+    random_points = [{"point_type": "random", "point": p} for p in random_points]
 
-    return [{"human": h, "point": p} for p in p1]
+    all_points.extend(random_points)
+
+    for p in all_points:
+        p["human"] = h
+
+    return all_points
 
 
 def map_lat_lng(points_with_person, perturb=False):
     api = Api()
     points = [p["point"] for p in points_with_person]
     persons = [p["human"] for p in points_with_person]
+    birth_or_residence = [p["point_type"] for p in points_with_person]
 
     if perturb:
         lat_lng_arr = [point_to_perturbed_lat_lng(p) for p in points]
@@ -123,9 +146,10 @@ def map_lat_lng(points_with_person, perturb=False):
     response = api.get_bulk_reverse_geocode(payload)
     response_array = response["result"]
 
-    zipped_list = list(zip(points, persons, response_array))
+    zipped_list = list(zip(points, persons, birth_or_residence, response_array))
     list_of_dicts = [
-        {"point": i[0], "person": i[1], "pc_response": i[2]} for i in zipped_list
+        {"point": i[0], "person": i[1], "point_type": i[2], "pc_response": i[3]}
+        for i in zipped_list
     ]
     return list_of_dicts
 
@@ -146,7 +170,7 @@ def point_to_perturbed_lat_lng(point_text, limit=5):
     return {"longitude": lng, "latitude": lat, "limit": 5, "radius": 1000}
 
 
-def get_postcode(x):
+def get_postcode_from_api_results(x):
     if x:
         if x["result"]:
             res = []
@@ -166,11 +190,17 @@ def get_postcode(x):
 
 def postcode_lookup_from_cleaned_person_data(df, api_group_size=100):
 
-    cols = ["human", "birth_coordinates", "residence_coordinates"]
+    cols = ["human", "birth_coordinates", "residence_coordinates", "random_coordinates"]
     df = df[cols].copy()
     df["points"] = list(df[cols].itertuples(index=False, name=None))
 
-    cols = ["human", "points", "birth_coordinates", "residence_coordinates"]
+    cols = [
+        "human",
+        "points",
+        "birth_coordinates",
+        "residence_coordinates",
+        "random_coordinates",
+    ]
 
     df = df[cols].copy()
     df["point_array"] = df["points"].map(points_to_array)
@@ -187,9 +217,11 @@ def postcode_lookup_from_cleaned_person_data(df, api_group_size=100):
     )
     exploded = point_lists["geo_array"].explode("geo_array")
     df_results_1 = pd.DataFrame(list(exploded))
-    df_results_1["nearby_postcodes"] = df_results_1["pc_response"].apply(get_postcode)
+    df_results_1["nearby_postcodes"] = df_results_1["pc_response"].apply(
+        get_postcode_from_api_results
+    )
 
-    df_results_1 = df_results_1[["point", "person", "nearby_postcodes"]]
+    df_results_1 = df_results_1[["point", "person", "point_type", "nearby_postcodes"]]
     f1 = df_results_1["nearby_postcodes"].isnull()
 
     return df_results_1[~(f1)]

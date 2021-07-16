@@ -137,3 +137,30 @@ WHERE
 }
 LIMIT 100
 """
+
+
+QUERY_OCCUPATIONS = """
+SELECT
+    ?human
+    ?occupationLabel
+
+WITH {
+SELECT distinct
+    ?human
+    ?occupation
+WHERE {
+    ?human wdt:P31 wd:Q5.
+    ?human wdt:P106 ?occupation.
+
+}
+LIMIT 100
+} AS %results
+
+WHERE {
+  INCLUDE %results.
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+}
+LIMIT 123456
+
+"""
