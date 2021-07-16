@@ -58,6 +58,8 @@ cc = [
         ],
         "null_function": full_name_null,
         "null_probability": 0.05,
+        "start_exact_proportion": 0.8,
+        "end_exact_proportion": 0.0,
     },
     {
         "col_name": "dob",
