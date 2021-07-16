@@ -14,12 +14,14 @@ from corrupt.dob_corrupt import dob_exact_match, dob_corrupt_typo
 
 from corrupt.location_corrupt import (
     location_master_record,
-    corrupt_location,
     location_exact_match,
-    location_null,
+    corrupt_location_move_house,
+    corrupt_location_nearby_postcode_house,
+    corrupt_location_postcode_typo,
     birth_place_master_record,
     birth_place_exact_match,
     corrupt_birth_place,
+    location_null,
 )
 
 from corrupt.gender_corrupt import gender_exact_match, gender_corrupt
@@ -30,6 +32,11 @@ from corrupt.name_corrupt import (
     full_name_null,
 )
 
+from corrupt.corrupt_occupation import (
+    occupation_master_record,
+    occupation_exact_match,
+    occupation_corrupt,
+)
 
 from corrupt.geco_corrupt import get_zipf_dist
 
@@ -76,10 +83,12 @@ cc = [
     },
     {
         "col_name": "location",
-        "m_probabilities": [0.5, 0.5],
+        "m_probabilities": [0.3, 0.3, 0.2, 0.2],
         "choose_master_data": location_master_record,
         "corruption_functions": [
-            corrupt_location,
+            corrupt_location_move_house,
+            corrupt_location_nearby_postcode_house,
+            corrupt_location_postcode_typo,
             location_exact_match,
         ],
         "null_function": location_null,
@@ -94,6 +103,17 @@ cc = [
             gender_exact_match,
         ],
         "null_function": basic_null_fn("gender"),
+        "null_probability": 0.2,
+    },
+    {
+        "col_name": "occupation",
+        "m_probabilities": [0.9, 0.1],
+        "choose_master_data": occupation_master_record,
+        "corruption_functions": [
+            occupation_corrupt,
+            occupation_exact_match,
+        ],
+        "null_function": basic_null_fn("occupation"),
         "null_probability": 0.2,
     },
 ]
@@ -126,8 +146,8 @@ for i, master_record in enumerate(records):
 
     num_corrupted_records = np.random.choice(zipf_dist["vals"], p=zipf_dist["weights"])
 
-    for i in range(num_corrupted_records):
-        corrupted_record = {"num_corruptions": 0}
+    for corruption_number in range(num_corrupted_records):
+        corrupted_record = {"num_corruptions": 0, "num_location_corruptions": 0}
         corrupted_record["id"] = master_record["human"]
         for c in cc:
             weights = c["m_probabilities"]
@@ -151,6 +171,5 @@ display(corrupted_df)
 #     print(("-" * 80).join(["\n"] * 6))
 #     display(df5[df5["human"] == h])
 #     display(corrupted_df[corrupted_df["id"] == h])
-
 
 # %%

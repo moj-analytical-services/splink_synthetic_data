@@ -146,6 +146,8 @@ def location_master_record(master_record):
         additional_locs = get_simulated_house_moves(loc)
 
         all_locs.extend(additional_locs)
+        all_locs.append(primary_loc)
+        all_locs = [loc for loc in all_locs if loc is not None]
     master_record["_all_locs"] = all_locs
 
     return master_record
@@ -214,7 +216,9 @@ def location_exact_match(master_record, corrupted_record={}):
 def corrupt_location_move_house(master_record, corrupted_record={}):
 
     locs = master_record["_all_locs"]
-    loc = np.random.choice(locs)[0]
+    indices = range(len(locs))
+    index = np.random.choice(indices)
+    loc = locs[index][0]
     corrupted_record["postcode"] = loc["postcode"]
     corrupted_record["lat"] = loc["lat"]
     corrupted_record["lng"] = loc["lng"]
@@ -228,7 +232,9 @@ def corrupt_location_move_house(master_record, corrupted_record={}):
 
 def corrupt_location_nearby_postcode_house(master_record, corrupted_record={}):
     locs = master_record["_primary_loc"]
-    loc = np.random.choice(locs)[0]
+    indices = range(len(locs))
+    index = np.random.choice(indices)
+    loc = locs[index]
     corrupted_record["postcode"] = loc["postcode"]
     corrupted_record["lat"] = loc["lat"]
     corrupted_record["lng"] = loc["lng"]
@@ -265,4 +271,24 @@ def location_null(master_record, null_prob, corrupted_record={}):
         corrupted_record["postcode"] = None
         corrupted_record["lat"] = None
         corrupted_record["lng"] = None
+    return corrupted_record
+
+
+def birth_place_exact_match(master_record, corrupted_record={}):
+    corrupted_record["birth_place"] = master_record["_chosen_birth_place"]
+    return corrupted_record
+
+
+def corrupt_birth_place(master_record, corrupted_record={}):
+
+    corrupted_record["num_birth_place_corruptions"] = 0
+
+    corrupted_record["birth_place"] = np.random.choice(
+        master_record["_chosen_birth_place_options"]
+    )
+
+    if master_record["_chosen_birth_place"] != corrupted_record["birth_place"]:
+        corrupted_record["num_corruptions"] += 1
+        corrupted_record["num_birth_place_corruptions"] += 1
+
     return corrupted_record
