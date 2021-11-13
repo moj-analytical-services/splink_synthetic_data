@@ -65,6 +65,7 @@ def corrupt_full_name(master_record, corrupted_record={}):
     corrupted_record
 
     corrupted_record["num_corruptions"] += corrupted_record["num_name_corruptions"]
+
     return corrupted_record
 
 

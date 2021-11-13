@@ -52,8 +52,9 @@ SELECT
     ?residence_coordinates
     ?residence_country
 WHERE {
-    ?human wdt:P31 wd:Q5;
-    wdt:P27 ?country_citizen, wd:Q145.
+    ?human wdt:P31 wd:Q5.
+
+  OPTIONAL { ?human wdt:P27 ?country_citizen. }
   OPTIONAL { ?human wdt:P1477 ?birth_name. }
   OPTIONAL { ?human wdt:P735 ?given_name. }
   OPTIONAL { ?human wdt:P734 ?family_name. }

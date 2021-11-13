@@ -18,17 +18,26 @@ def basic_null_fn(colname):
     return partial(_basic_null_fn_to_partial, col_name=colname)
 
 
-def reweight(corruption_num, total_num_corruptions, original_weights, start_exact_proportion, end_exact_proportion):
+def scale_linear(domain, range):
 
-    weights_except_exact = original_weights[:-1]
+    domain_span = domain[1] - domain[0]
+    range_span = range[1] - range[0]
 
-    exact_weight
+    def scale_function(value):
+
+        perc_domain = (value - domain[0]) / domain_span
+        place_in_range = perc_domain * range_span
+        return place_in_range + range[0]
+
+    return scale_function
 
 
-
-    [0,1] is exact match
-    [1,0 is exact non match
-
-    [0.5, 0.5]
-
-    [0.01, 0.99]
+def initiate_counters(record):
+    record["num_corruptions"] = 0
+    record["num_name_corruptions"] = 0
+    record["num_location_corruptions"] = 0
+    record["num_birth_place_corruptions"] = 0
+    record["num_dob_corruptions"] = 0
+    record["num_occupation_corruptions"] = 0
+    record["num_gender_corruptions"] = 0
+    return record
