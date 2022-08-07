@@ -109,7 +109,8 @@ def get_results(endpoint_url, query):
     sparql = SPARQLWrapper(endpoint_url, agent=user_agent)
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
-    return sparql.query().convert()
+    query_returned = sparql.query()
+    return query_returned.convert()
 
 
 def get_value_from_result(x):
@@ -122,7 +123,7 @@ def get_value_from_result(x):
 def query_with_offset(query, page=0, pagesize=500):
     limit_offset = f" limit {pagesize} offset {page*pagesize}"
     this_query = query.replace("LIMIT 100", limit_offset)
-    print(this_query)
+    # print(this_query)
     results = get_results(endpoint_url, this_query)
     df = pd.DataFrame(results["results"]["bindings"])
     df = df.applymap(get_value_from_result)
