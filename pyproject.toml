@@ -8,15 +8,14 @@ authors = ["Robin Linacre <robin.linacre@digital.justice.gov.uk>"]
 python = "^3.8"
 pandas = "^1.2.5"
 rdflib = "^5.0.0"
-duckdb = "^0.2.7"
 SPARQLWrapper = "^1.8.5"
-pyarrow = "^4.0.1"
 requests = "^2.25.1"
 stackprinter = "^0.2.5"
 altair = "^4.2.0"
+duckdb = "0.4.0"
+pyarrow = "9.0.0"
 
 [tool.poetry.dev-dependencies]
-duckdb = "^0.2.7"
 flake8 = "^3.9.2"
 black = "^21.6b0"
 ipykernel = "^6.0.1"
