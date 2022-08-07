@@ -40,10 +40,10 @@ def days_in_month(year, month):
 
 
 
-for year in range(2020,2018,-1):
+for year in range(2020,2017,-1):
     for month in range(12,0,-1):
         date_list = days_in_month(year, month)
-        filename = f"{out_folder}/dod_{year}_{month}.parquet"
+        filename = f"{out_folder}/dod_{year}_{month:02}.parquet"
         dfs = []
         start_time = time.time()
         if not os.path.exists(filename):
@@ -55,12 +55,12 @@ for year in range(2020,2018,-1):
                     dfs.append(df)
 
 
-        df = pd.concat(dfs)
-        df.to_parquet(filename)
+            df = pd.concat(dfs)
+            df.to_parquet(filename)
 
-        end_time = time.time()
+            end_time = time.time()
 
-        print(f"Time taken: {end_time - start_time}")
+            print(f"Time taken: {end_time - start_time}")
 
 
 
