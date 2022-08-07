@@ -13,40 +13,40 @@ poetry install
 
 In VS code, ensure the selected Python interpreter corresponds to the venv using command pallette -> "Python: Select Interpreter"
 
-## Scraping data from wikidata
+## Scraping humans from wikidata (`01_scrape_persons.py`)
 
-Wikidata provides a query service at https://query.wikidata.org/
+Wikidata provides a query service at https://query.wikidata.org/ where we can ask for a list of humans
 
-There are limits to the number of records returned by the service so you must paginate results (e.g. request the first 5,000 records, then 5,001 to 10,000, etc.)
+It is challenging to construct queries for three main reasons:
 
-In the scripts you'll see a loop like:
+- Most columns of interest are potentially one-to-many. For example, one human can live in many countries in their lifetime, having many occupations etc
+- There's far too much data to run a single query so we need a strategy to capture all data a bit at a time.
+- We need to find a way of phrasing the queries so they execute quickly
 
-```
-for page in range(1, 100):
-```
+We solve these issues by using a high-cardinality field (date of death), scraping each day, and then concatenating the results.
 
-Results are saved out to make it clear how far the scrape has progressed e.g. `page_1_5000_to_9999.parquet`
+By default, the queries apply a filter so date of death is before the year 2000.
 
-This allows you to re-start a partially completed scrape. So if you see you've completed pages 1 to 25, you could alter that to
+## Scraping aliases (`02_scrape_names.py`)
 
-```
-for page in range(26, 100):
-```
+Wikidata provides us with a mechanism of finding aliases/nicknames/diminutives/hypocorism for common names.
 
-to restart at page 26.
+This will be useful later when we wish to introduce errors variations on the original records to create our synthetic matching data.
 
-There's also a rate limiter `time.sleep(45)` so we don't spam the wikidata service with too many requests.
+If you get `ValueError: df does not contain 4 cols` that usually means you've scraped all the available data.
 
-## Scraping persons
+## Tidying up the scraped data (`03_raw_persons_data_to_one_line_per_person.py`)
 
-You can scrape entities of the type human (`?human wdt:P31 wd:Q5.`) using
+This script simplifies the scraped data to produce a list of people with one row per person.
 
-`python 01_scrape_persons.py`.
+To handle one to many relationships, all characteristics/properties/columns are aggregated into a list.
 
-This is a long running operation and results are paginated. You can re-start from a partially completed scrape by changing the start of the range.
+e.g. the value of the occupation for Winston Churchill will be ['politician', 'writer'] etc.
 
----
+Note that, for consistency, all fields contain lists. So Winston Churchill's date of birth is ['1984-11-30'], despite there being a single value
 
-Plan:
+And where a value does not exist, the field will still contain a list with a single value `[Null]`
 
-- Scrape
+## Corrupt records (`07_corrupt_records.py`)
+
+This script takes the raw data and created duplicate records, introducing errors of various types.

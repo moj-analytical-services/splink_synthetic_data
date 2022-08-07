@@ -14,66 +14,82 @@ from scrape_wikidata.names import (
     get_family_name_weighted_lookup,
 )
 
-BASE_PATH = "scrape_wikidata/raw_data/names/"
+
+from pathlib import Path
+out_folder = "out_data/wikidata/raw/persons/by_dob"
+
+
+BASE_PATH = "out_data/wikidata/raw/names/"
 BASE_PATH_GN = os.path.join(BASE_PATH, "name_type=given")
 BASE_PATH_FN = os.path.join(BASE_PATH, "name_type=family")
 
+Path(BASE_PATH).mkdir(parents=True, exist_ok=True)
+Path(BASE_PATH_GN).mkdir(parents=True, exist_ok=True)
+Path(BASE_PATH_FN).mkdir(parents=True, exist_ok=True)
 
 # %%
 
 
 for page in range(0, 100, 1):
     pagesize = 5000
-    df = get_standardised_table(
-        SQL_GN_SAID_TO_BE_SAME_AS, "said_to_be_the_same_as", page, pagesize
-    )
-    df = df.drop_duplicates()
     path = os.path.join(
         BASE_PATH_GN,
-        f"stbtsa_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
-    )
-    df.to_parquet(
-        path,
-        index=False,
-    )
-    time.sleep(20)
+        f"stbtsa_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet")
+
+    if not os.path.exists(path):
+        df = get_standardised_table(
+            SQL_GN_SAID_TO_BE_SAME_AS, "said_to_be_the_same_as", page, pagesize
+        )
+        df = df.drop_duplicates()
+
+        df.to_parquet(
+            path,
+            index=False,
+        )
 
 
 # %%
 
 
+# Scrape first name said to be the same as
 for page in range(0, 100, 1):
     pagesize = 5000
-    df = get_standardised_table(
-        SQL_FN_SAID_TO_BE_SAME_AS, "said_to_be_the_same_as", page, pagesize
-    )
-    df = df.drop_duplicates()
+
     path = os.path.join(
         BASE_PATH_FN,
         f"stbtsa_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
-    df.to_parquet(
-        path,
-        index=False,
-    )
-    time.sleep(20)
+
+    if not os.path.exists(path):
+        df = get_standardised_table(
+            SQL_FN_SAID_TO_BE_SAME_AS, "said_to_be_the_same_as", page, pagesize
+        )
+        df = df.drop_duplicates()
+
+        df.to_parquet(
+            path,
+            index=False,
+        )
 
 
 # %%
 
-
+# Scrape given name said to be the same as
 for page in range(0, 100, 1):
     pagesize = 5000
-    df = get_standardised_table(SQL_GN_NICKNAME, "nickname", page, pagesize)
-    df = df.drop_duplicates()
     path = os.path.join(
         BASE_PATH_GN,
         f"nickname_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
-    df.to_parquet(
-        path,
-        index=False,
-    )
+
+    if not os.path.exists(path):
+        df = get_standardised_table(SQL_GN_NICKNAME, "nickname", page, pagesize)
+        df = df.drop_duplicates()
+
+        df.to_parquet(
+            path,
+            index=False,
+        )
     time.sleep(20)
 
 # %%

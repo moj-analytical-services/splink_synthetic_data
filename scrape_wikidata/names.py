@@ -3,7 +3,8 @@ from scrape_wikidata.query_wikidata import replace_url, query_with_offset
 import pandas as pd
 import duckdb
 
-import duckdb
+
+
 
 SQL_GN_SAID_TO_BE_SAME_AS = """\
 SELECT ?given_name ?given_nameLabel ?said_to_be_the_same_asLabel

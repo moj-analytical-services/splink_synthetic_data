@@ -15,9 +15,10 @@ altair = "^4.2.0"
 duckdb = "0.4.0"
 pyarrow = "9.0.0"
 
+
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.2"
-black = "^21.6b0"
+black = "^22.6"
 ipykernel = "^6.0.1"
 
 [build-system]

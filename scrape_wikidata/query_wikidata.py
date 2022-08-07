@@ -1,7 +1,6 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 import sys
 import pandas as pd
-from scrape_wikidata.cleaning_fns import replace_url
 
 endpoint_url = "https://query.wikidata.org/sparql"
 
@@ -93,24 +92,7 @@ WHERE {
 LIMIT 5000
 """
 
-# How to get name ordinal
-# SELECT
-#     ?human
-#     ?given_name
-#     ?given_nameLabel
-#     ?name_num
 
-# WHERE {
-#     ?human wdt:P31 wd:Q5.
-#     ?human p:P735 ?statement.
-#     ?statement ps:P735 ?given_name.
-#     OPTIONAL {?statement pq:P1545 ?name_num.}
-
-#     SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-
-#   VALUES ?human {wd:Q80}
-
-# }
 
 
 def get_results(endpoint_url, query):
@@ -140,40 +122,18 @@ def query_with_date(query, date):
     df = df.applymap(get_value_from_result)
     return df
 
-
-QUERY_CHILDREN = """
-SELECT ?human ?child
-WHERE
-{
-  ?human wdt:P31 wd:Q5.
-  ?human wdt:P40 ?child.
-}
-LIMIT 100
-"""
+def replace_url(x):
+    try:
+        return x.replace("http://www.wikidata.org/entity/", "")
+    except:
+        return x
 
 
-QUERY_OCCUPATIONS = """
-SELECT
-    ?human
-    ?occupationLabel
-
-WITH {
-SELECT distinct
-    ?human
-    ?occupation
-WHERE {
-    ?human wdt:P31 wd:Q5.
-    ?human wdt:P106 ?occupation.
-
-}
-LIMIT 100
-} AS %results
-
-WHERE {
-  INCLUDE %results.
-
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-}
-LIMIT 123456
-
-"""
+def query_with_offset(query, page=0, pagesize=500):
+    limit_offset = f" limit {pagesize} offset {page*pagesize}"
+    this_query = query.replace("LIMIT 100", limit_offset)
+    print(this_query)
+    results = get_results(endpoint_url, this_query)
+    df = pd.DataFrame(results["results"]["bindings"])
+    df = df.applymap(get_value_from_result)
+    return df
