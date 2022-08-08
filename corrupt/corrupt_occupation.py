@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def occupation_formatted_master_record(master_input_record):
+def occupation_format_master_record(master_input_record):
     if master_input_record["occupationLabel"][0] is None:
         master_input_record["_list_occupations"] = None
     else:
@@ -11,7 +11,7 @@ def occupation_formatted_master_record(master_input_record):
     return master_input_record
 
 
-def occupation_uncorrupted_record(formatted_master_record, uncorrupted_record={}):
+def occupation_gen_uncorrupted_record(formatted_master_record, uncorrupted_record={}):
     if formatted_master_record["_list_occupations"] is None:
         uncorrupted_record["occupation"] = None
     else:

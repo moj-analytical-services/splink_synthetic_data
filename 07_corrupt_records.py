@@ -15,8 +15,8 @@ from corrupt.corruption_functions import (
 
 
 from corrupt.corrupt_occupation import (
-    occupation_formatted_master_record,
-    occupation_uncorrupted_record,
+    occupation_format_master_record,
+    occupation_gen_uncorrupted_record,
     occupation_corrupt,
 )
 
@@ -44,14 +44,14 @@ from corrupt.geco_corrupt import get_zipf_dist
 config = [
     {
         "col_name": "occupation",
-        "format_master_data": occupation_formatted_master_record,
-        "uncorrupted_record": occupation_uncorrupted_record,
+        "format_master_data": occupation_format_master_record,
+        "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
         "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
         "null_function": basic_null_fn("occupation"),
         "start_prob_corrupt": 0.1,
-        "end_prob_corrupt": 1.0,
+        "end_prob_corrupt": 0.7,
         "start_prob_null": 0.0,
-        "end_prob_null": 0.7,
+        "end_prob_null": 0.5,
     }
 ]
 
@@ -101,14 +101,39 @@ def generate_uncorrupted_output_record(formatted_master_record, config):
     uncorrupted_record["id"] = formatted_master_record["human"]
 
     for c in config:
-        fn = c["uncorrupted_record"]
+        fn = c["gen_uncorrupted_record"]
         uncorrupted_record = fn(formatted_master_record, uncorrupted_record)
 
     return uncorrupted_record
 
 
+def get_null_prob(counter, group_size, config):
+    null_domain = [0, group_size - 1]
+    null_range = [config["start_prob_null"], config["end_prob_null"]]
+    null_scale = scale_linear(null_domain, null_range)
+    prob_null = null_scale(counter)
+    return prob_null
+
+
+def get_prob_of_corruption(counter, group_size, config):
+    prob_corrupt_domain = [0, group_size - 1]
+    prob_corrupt_range = [config["start_prob_corrupt"], config["end_prob_corrupt"]]
+    prob_corrupt_scale = scale_linear(prob_corrupt_domain, prob_corrupt_range)
+    prob_corrupt = prob_corrupt_scale(counter)
+    return prob_corrupt
+
+
+def choose_corruption_function(config):
+    weights = [f["p"] for f in config["corruption_functions"]]
+    fns = [f["fn"] for f in config["corruption_functions"]]
+    return np.random.choice(fns, p=weights)
+
+
 def generate_corrupted_output_records(
-    formatted_master_record, uncorrupted_record, num_corrupted_records, config
+    formatted_master_record,
+    counter,
+    total_num_corrupted_records,
+    config,
 ):
 
     corrupted_record = {
@@ -123,52 +148,27 @@ def generate_corrupted_output_records(
 
         corrupted_record["uncorrupted_record"] = False
 
-        # Get prob null
-        prob_null = 0.2
+        prob_null = get_null_prob(counter, total_num_corrupted_records, c)
+        prob_corrupt = get_prob_of_corruption(counter, total_num_corrupted_records, c)
 
-        # Choose corruption function
-        corruption_function = c["corruption_functions"][0]["fn"]
+        # Choose corruption function to apply
+        corruption_function = choose_corruption_function(c)
 
-        # Get prob corrupt
-        prob_corrupt = 0.5
+        if random.uniform(0, 1) < prob_corrupt:
+            fn = corruption_function
+        else:
+            fn = c["gen_uncorrupted_record"]
 
-        corrupted_record = corruption_function(
-            formatted_master_record, corrupted_record
+        corrupted_record = fn(formatted_master_record, corrupted_record)
+
+        null_fn = c["null_function"]
+        corrupted_record = null_fn(
+            formatted_master_record,
+            null_prob=prob_null,
+            corrupted_record=corrupted_record,
         )
 
     return corrupted_record
-
-    # for c in config:
-
-    #     null_domain = [0, num_corrupted_records - 1]
-    #     null_range = [c["start_prob_null"], c["end_prob_null"]]
-    #     null_scale = scale_linear(null_domain, null_range)
-    #     prob_null = null_scale(corruption_number)
-
-    #     prob_corrupt_domain = [0, num_corrupted_records - 1]
-    #     prob_corrupt_range = [c["start_prob_corrupt"], c["end_prob_corrupt"]]
-    #     prob_corrupt_scale = scale_linear(prob_corrupt_domain, prob_corrupt_range)
-    #     prob_corrupt = prob_corrupt_scale(corruption_number)
-
-    #     weights = [f["p"] for f in c["corruption_functions"]]
-    #     fns = [f["fn"] for f in c["corruption_functions"]]
-
-    #     if random.uniform(0, 1) < prob_corrupt:
-    #         fn = np.random.choice(fns, p=weights)
-    #     else:
-    #         fn = c["uncorrupted_record"]
-
-    #     corrupted_record = fn(master_input_record, corrupted_record)
-    #     corrupted_record["uncorrupted_record"] = False
-
-    #     null_fn = c["null_function"]
-    #     corrupted_record = null_fn(
-    #         master_input_record,
-    #         null_prob=prob_null,
-    #         corrupted_record=corrupted_record,
-    #     )
-
-    # corrupted_records.append(corrupted_record)
 
 
 output_records = []
@@ -183,15 +183,18 @@ for i, master_input_record in enumerate(records):
     )
 
     output_records.append(uncorrupted_output_record)
-    num_corrupted_records = np.random.choice(zipf_dist["vals"], p=zipf_dist["weights"])
-
-    corrupted_output_records = generate_corrupted_output_records(
-        formatted_master_record,
-        uncorrupted_output_record,
-        num_corrupted_records,
-        config,
+    total_num_corrupted_records = np.random.choice(
+        zipf_dist["vals"], p=zipf_dist["weights"]
     )
-    output_records.append(corrupted_output_records)
+
+    for counter in range(total_num_corrupted_records):
+        corrupted_output_record = generate_corrupted_output_records(
+            formatted_master_record,
+            counter,
+            total_num_corrupted_records,
+            config,
+        )
+        output_records.append(corrupted_output_record)
 
 df = pd.DataFrame(output_records)
 cols = list(df.columns)
