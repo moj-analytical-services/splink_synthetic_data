@@ -1,30 +1,15 @@
-from datetime import datetime
+import datetime
 import calendar
 import time
 import os
 import pandas as pd
 
-from scrape_wikidata.query_wikidata import (
-    query_with_date,
-    QUERY_HUMAN,
-    QUERY_CHILDREN,
-    QUERY_OCCUPATIONS,
-)
-
-from scrape_wikidata.cleaning_fns import replace_url
-
+from scrape_wikidata.query_wikidata import query_with_date, QUERY_HUMAN
 
 from pathlib import Path
 
 out_folder = "out_data/wikidata/raw/persons/by_dob"
 Path(out_folder).mkdir(parents=True, exist_ok=True)
-
-import datetime
-
-base = datetime.datetime(2020, 1, 1)
-num_days = 1000
-date_list = [base - datetime.timedelta(days=x) for x in range(num_days)]
-date_list = [d.date().isoformat() for d in date_list]
 
 
 def days_in_month(year, month):
@@ -54,9 +39,3 @@ for year in range(2000, 1900, -1):
             end_time = time.time()
 
             print(f"Time taken: {end_time - start_time}")
-
-
-# import pandas as pd
-# pd.options.display.max_columns = 1000
-
-# pd.read_parquet("/Users/robinlinacre/Documents/data_linking/splink_synthetic_data/out_data/wikidata/raw/persons/by_dob/dod_20200101.parquet")

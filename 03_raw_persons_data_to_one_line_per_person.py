@@ -8,15 +8,16 @@ con = duckdb.connect(":memory:")
 con.register("df", arrow_table)
 
 wikireplace = """replace({col}, 'http://www.wikidata.org/entity/', '') as {col}"""
+cast_date = "cast({col} as date) as {col}"
 
 sql = f"""
 with nowikiurl as
 (
 select
     {wikireplace.format(col="human")},
-    dod,
+    {cast_date.format(col="dod")},
     {wikireplace.format(col="family_name")},
-    dob,
+    {cast_date.format(col="dob")},
     {wikireplace.format(col="given_name")},
     {wikireplace.format(col="country_citizen")},
     {wikireplace.format(col="occupation")},
@@ -88,7 +89,9 @@ tidied_arrow = tidied.fetch_arrow_table()
 
 pq.write_table(tidied_arrow, "tidied.parquet")
 
-con.execute("""
+con.execute(
+    """
 select count(*)
 from 'tidied.parquet'
-""").df()
+"""
+).df()
