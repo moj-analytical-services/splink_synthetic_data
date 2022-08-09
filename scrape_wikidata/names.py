@@ -4,8 +4,6 @@ import pandas as pd
 import duckdb
 
 
-
-
 SQL_GN_SAID_TO_BE_SAME_AS = """\
 SELECT ?given_name ?given_nameLabel ?said_to_be_the_same_asLabel
 WITH {
@@ -51,7 +49,7 @@ WITH {
 as %results
 
 WHERE {
-  INCLUDE %results.
+  INCLUDE %results.get_given_name_weighted_lookup
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 }
 """
@@ -139,7 +137,7 @@ def get_diminutives():
     return pd.DataFrame(rows)
 
 
-def get_given_name_weighted_lookup(names, counts):
+def get_given_name_weighted_lookup(con):
     sql = """
 
     with names_concat as (
@@ -170,7 +168,7 @@ def get_given_name_weighted_lookup(names, counts):
         from distinct_names_concat as n
         inner join
         counts as c
-        on n.alt_name = c.forename
+        on n.alt_name = c.given_name
         where
         count >= 10
         and original_name != alt_name
@@ -182,7 +180,7 @@ def get_given_name_weighted_lookup(names, counts):
     order by original_name, weight desc
     """
 
-    weights = duckdb.query(sql).to_df()
+    weights = con.query(sql).to_df()
 
     sql = """
 
@@ -197,7 +195,7 @@ def get_given_name_weighted_lookup(names, counts):
     on w.original_name = s.original_name
 
     """
-    return duckdb.query(sql).to_df()
+    return con.query(sql).to_df()
 
 
 def get_family_name_weighted_lookup(names, counts):

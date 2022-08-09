@@ -9,8 +9,9 @@ import pyarrow.parquet as pq
 from corrupt.corruption_functions import (
     master_record_no_op,
     basic_null_fn,
-    scale_linear,
-    initiate_counters,
+    format_master_data,
+    generate_uncorrupted_output_record,
+    generate_corrupted_output_records,
 )
 
 
@@ -18,6 +19,12 @@ from corrupt.corrupt_occupation import (
     occupation_format_master_record,
     occupation_gen_uncorrupted_record,
     occupation_corrupt,
+)
+
+from corrupt.corrupt_name import (
+    full_name_gen_uncorrupted_record,
+    full_name_corrupt,
+    full_name_null,
 )
 
 from corrupt.geco_corrupt import get_zipf_dist
@@ -43,6 +50,17 @@ from corrupt.geco_corrupt import get_zipf_dist
 
 config = [
     {
+        "col_name": "full_name",
+        "format_master_data": master_record_no_op,
+        "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
+        "corruption_functions": [{"fn": full_name_corrupt, "p": 1.0}],
+        "null_function": full_name_null,
+        "start_prob_corrupt": 0.1,
+        "end_prob_corrupt": 0.7,
+        "start_prob_null": 0.0,
+        "end_prob_null": 0.5,
+    },
+    {
         "col_name": "occupation",
         "format_master_data": occupation_format_master_record,
         "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
@@ -52,27 +70,22 @@ config = [
         "end_prob_corrupt": 0.7,
         "start_prob_null": 0.0,
         "end_prob_null": 0.5,
-    }
+    },
 ]
 
 
-base_path = "out_data/wikidata/raw/persons/by_dob"
-arrow_table = pq.read_table(base_path)
-
 con = duckdb.connect(":memory:")
-con.register("df", arrow_table)
-sql = """
-with a as (
-select cast(dod[1] as date) as dod_date, *
-from 'tidied.parquet'
-)
-select * exclude dod_date from a
-where dod_date = '1993-11-01'
 
+sql = """
+select *
+from 'tidied.parquet'
+where dod[1] = '1993-11-01'
+limit 13
 """
 
 
 raw_data = con.execute(sql).df()
+raw_data
 
 
 max_corrupted_records = 20
@@ -84,91 +97,6 @@ records[0]
 
 
 corrupted_records = []
-
-
-def format_master_data(master_input_record, config):
-    for c in config:
-        fn = c["format_master_data"]
-        master_record = fn(master_input_record)
-    return master_record
-
-
-def generate_uncorrupted_output_record(formatted_master_record, config):
-
-    uncorrupted_record = {"uncorrupted_record": True}
-    uncorrupted_record = initiate_counters(uncorrupted_record)
-
-    uncorrupted_record["id"] = formatted_master_record["human"]
-
-    for c in config:
-        fn = c["gen_uncorrupted_record"]
-        uncorrupted_record = fn(formatted_master_record, uncorrupted_record)
-
-    return uncorrupted_record
-
-
-def get_null_prob(counter, group_size, config):
-    null_domain = [0, group_size - 1]
-    null_range = [config["start_prob_null"], config["end_prob_null"]]
-    null_scale = scale_linear(null_domain, null_range)
-    prob_null = null_scale(counter)
-    return prob_null
-
-
-def get_prob_of_corruption(counter, group_size, config):
-    prob_corrupt_domain = [0, group_size - 1]
-    prob_corrupt_range = [config["start_prob_corrupt"], config["end_prob_corrupt"]]
-    prob_corrupt_scale = scale_linear(prob_corrupt_domain, prob_corrupt_range)
-    prob_corrupt = prob_corrupt_scale(counter)
-    return prob_corrupt
-
-
-def choose_corruption_function(config):
-    weights = [f["p"] for f in config["corruption_functions"]]
-    fns = [f["fn"] for f in config["corruption_functions"]]
-    return np.random.choice(fns, p=weights)
-
-
-def generate_corrupted_output_records(
-    formatted_master_record,
-    counter,
-    total_num_corrupted_records,
-    config,
-):
-
-    corrupted_record = {
-        "num_corruptions": 0,
-        "uncorrupted_record": False,
-    }
-
-    corrupted_record = initiate_counters(corrupted_record)
-    corrupted_record["id"] = formatted_master_record["human"]
-
-    for c in config:
-
-        corrupted_record["uncorrupted_record"] = False
-
-        prob_null = get_null_prob(counter, total_num_corrupted_records, c)
-        prob_corrupt = get_prob_of_corruption(counter, total_num_corrupted_records, c)
-
-        # Choose corruption function to apply
-        corruption_function = choose_corruption_function(c)
-
-        if random.uniform(0, 1) < prob_corrupt:
-            fn = corruption_function
-        else:
-            fn = c["gen_uncorrupted_record"]
-
-        corrupted_record = fn(formatted_master_record, corrupted_record)
-
-        null_fn = c["null_function"]
-        corrupted_record = null_fn(
-            formatted_master_record,
-            null_prob=prob_null,
-            corrupted_record=corrupted_record,
-        )
-
-    return corrupted_record
 
 
 output_records = []

@@ -6,42 +6,41 @@ import numpy as np
 import random
 
 
-def full_name_exact_match(master_record, corrupted_record={}):
-    corrupted_record["full_name"] = master_record["humanlabel"]
-    return corrupted_record
+def full_name_gen_uncorrupted_record(master_record, uncorrupted_record={}):
+    uncorrupted_record["full_name"] = master_record["humanLabel"][0]
+    return uncorrupted_record
 
 
 def get_alt_name_lookup(master_record):
     lkup = {}
-    for i in [1, 2, 3]:
-        if master_record[f"given_name_{i}"] is not None:
-            if master_record[f"alt_given_name_{i}"] is not None:
-                lkup[master_record[f"given_name_{i}"]] = master_record[
-                    f"alt_given_name_{i}"
+    for i in [0, 1, 2]:
+        if master_record["given_name"][i] is not None:
+            if master_record["alt_given_name"][i] is not None:
+                lkup[master_record["given_name"][i]] = master_record["alt_given_name"][
+                    i
                 ]
 
-    for i in [1, 2]:
-        if master_record[f"family_name_{i}"] is not None:
-            if master_record[f"alt_family_name_{i}"] is not None:
-                lkup[master_record[f"family_name_{i}"]] = master_record[
-                    f"alt_family_name_{i}"
-                ]
+    for i in [0, 1]:
+        if master_record["family_name"][i] is not None:
+            if master_record["alt_family_name"][i] is not None:
+                lkup[master_record["family_name"][i]] = master_record[
+                    "alt_family_name"
+                ][i]
     return lkup
 
 
-def corrupt_full_name(master_record, corrupted_record={}):
-
-    corrupted_record["num_name_corruptions"] = 0
+def full_name_corrupt(formatted_master_record, corrupted_record={}):
 
     # Get list of labelled names and pick one
     list_of_names = []
     list_of_alt_names = []
-    list_of_names.append(master_record["humanlabel"])
-    if master_record["humanaltlabel"] is not None:
-        list_of_names.extend(master_record["humanaltlabel"])
-        list_of_alt_names = master_record["humanaltlabel"]
+    list_of_names.extend(formatted_master_record["humanLabel"])
+    if formatted_master_record["humanAltLabel"][0] is not None:
+        list_of_names.extend(formatted_master_record["humanAltLabel"])
+        list_of_alt_names = formatted_master_record["humanAltLabel"]
 
     # If we have alt names, sometimes return an alt name
+    #  using the following probabilities
     len_prob_lookup = {1: 0.25, 2: 0.33, 3: 0.5}
 
     if len(list_of_names) > 1:
@@ -54,14 +53,16 @@ def corrupt_full_name(master_record, corrupted_record={}):
 
     corrupted_record["full_name"] = np.random.choice(list_of_names)
 
-    if corrupted_record["full_name"] != master_record["humanlabel"]:
+    if corrupted_record["full_name"] != formatted_master_record["humanLabel"][0]:
         corrupted_record["num_name_corruptions"] += 2
 
     # Corrupt the name using alternative forms of given names
-    corrupted_record = corrupt_using_said_to_be_same_as(master_record, corrupted_record)
+    corrupted_record = corrupt_using_said_to_be_same_as(
+        formatted_master_record, corrupted_record
+    )
 
     # Corrupt the name using typos
-    corrupted_record = corrupt_name_querty(master_record, corrupted_record)
+    corrupted_record = corrupt_name_querty(formatted_master_record, corrupted_record)
     corrupted_record
 
     corrupted_record["num_corruptions"] += corrupted_record["num_name_corruptions"]

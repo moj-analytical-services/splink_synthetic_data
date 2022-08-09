@@ -81,7 +81,7 @@ WHERE {
   OPTIONAL { ?human wdt:P551 ?residence.   ?residence wdt:P625  ?residence_coordinates. }
   OPTIONAL { ?human wdt:P551 ?residence.   ?residence wdt:P17   ?residence_country. }
 }
-LIMIT 5000
+LIMIT 3000
 } AS %results
 
 WHERE {
@@ -89,10 +89,8 @@ WHERE {
 
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 }
-LIMIT 5000
+LIMIT 3000
 """
-
-
 
 
 def get_results(endpoint_url, query):
@@ -121,6 +119,7 @@ def query_with_date(query, date):
     df = pd.DataFrame(results["results"]["bindings"])
     df = df.applymap(get_value_from_result)
     return df
+
 
 def replace_url(x):
     try:

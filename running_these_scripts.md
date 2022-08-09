@@ -50,3 +50,13 @@ And where a value does not exist, the field will still contain a list with a sin
 ## Corrupt records (`07_corrupt_records.py`)
 
 This script takes the raw data and created duplicate records, introducing errors of various types.
+
+The script uses a config, which specifies, for each output column: - How to format the input record into an uncorrupted output record - One or more corruptions to apply to that column - Associated probability distributions
+
+A rough sketch of the algorithm is as follows:
+
+- Take each input record (person) and clean up using `format_master_data()`
+
+- Create an uncorrupted output record using `generate_uncorrupted_output_record()`
+
+- Create a series of corrupted records, using the config.

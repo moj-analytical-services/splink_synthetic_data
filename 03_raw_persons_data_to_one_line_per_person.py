@@ -8,7 +8,7 @@ con = duckdb.connect(":memory:")
 con.register("df", arrow_table)
 
 wikireplace = """replace({col}, 'http://www.wikidata.org/entity/', '') as {col}"""
-cast_date = "cast({col} as date) as {col}"
+cast_date = "TRY_CAST({col} as date) as {col}"
 
 sql = f"""
 with nowikiurl as
@@ -44,6 +44,7 @@ select
     {wikireplace.format(col="ethnicity")},
     ethnicityLabel,
 from df
+
 )
 
 select
@@ -81,17 +82,32 @@ group by human
 
 """
 
-# where cast(dod[1] as date) = '2018-11-02'
 
 tidied = con.execute(sql)
 
 tidied_arrow = tidied.fetch_arrow_table()
 
-pq.write_table(tidied_arrow, "tidied.parquet")
+out_path = "out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet"
+pq.write_table(tidied_arrow, out_path)
+
+import pandas as pd
+
+pd.options.display.max_columns = 1000
 
 con.execute(
-    """
+    f"""
 select count(*)
-from 'tidied.parquet'
+from '{out_path}'
 """
 ).df()
+
+con.execute(
+    f"""
+select *
+from '{out_path}'
+where residence[1] is not null
+USING SAMPLE 0.01% (bernoulli)
+
+limit 1
+"""
+).df().T
