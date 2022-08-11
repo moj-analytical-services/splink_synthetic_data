@@ -1,9 +1,4 @@
-from corrupt.geco_corrupt import (
-    position_mod_uniform,
-    CorruptValueQuerty,
-)
 import numpy as np
-import random
 
 
 def full_name_gen_uncorrupted_record(master_record, uncorrupted_record={}):

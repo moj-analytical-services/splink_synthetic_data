@@ -19,7 +19,7 @@ def days_in_month(year, month):
     return date_list
 
 
-for year in range(2000, 1900, -1):
+for year in range(2000, 1800, -1):
     for month in range(12, 0, -1):
         date_list = days_in_month(year, month)
         filename = f"{out_folder}/dod_{year}_{month:02}.parquet"
