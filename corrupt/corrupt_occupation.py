@@ -1,24 +1,33 @@
 import numpy as np
 
 
-def occupation_master_record(master_record):
-    options = master_record["occupation_options"]
-    if options is not None:
-        master_record["_chosen_occupation"] = np.random.choice(list(options))
+def occupation_format_master_record(master_input_record):
+    if master_input_record["occupationLabel"][0] is None:
+        master_input_record["_list_occupations"] = None
     else:
-        master_record["_chosen_occupation"] = None
-    return master_record
+        master_input_record["_list_occupations"] = master_input_record[
+            "occupationLabel"
+        ]
+    return master_input_record
 
 
-def occupation_exact_match(master_record, corrupted_record={}):
-    corrupted_record["occupation"] = master_record["_chosen_occupation"]
-    return corrupted_record
-
-
-def occupation_corrupt(master_record, corrupted_record={}):
-    options = master_record["occupation_options"]
-    if options is not None:
-        corrupted_record["occupation"] = np.random.choice(list(options))
+def occupation_gen_uncorrupted_record(formatted_master_record, uncorrupted_record={}):
+    if formatted_master_record["_list_occupations"] is None:
+        uncorrupted_record["occupation"] = None
     else:
+        uncorrupted_record["occupation"] = ", ".join(
+            formatted_master_record["_list_occupations"]
+        )
+    return uncorrupted_record
+
+
+def occupation_corrupt(formatted_master_record, corrupted_record={}):
+    options = formatted_master_record["_list_occupations"]
+    if options is None:
         corrupted_record["occupation"] = None
+    elif len(options) == 1:
+        corrupted_record["occupation"] = options[0]
+    else:
+        corrupted_record["occupation"] = np.random.choice(list(options))
+        corrupted_record["num_occupation_corruptions"] += 1
     return corrupted_record
