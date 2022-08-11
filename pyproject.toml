@@ -12,7 +12,7 @@ SPARQLWrapper = "^1.8.5"
 requests = "^2.25.1"
 stackprinter = "^0.2.5"
 altair = "^4.2.0"
-duckdb = "0.4.0"
+duckdb = "0.4.1.dev1542"
 pyarrow = "9.0.0"
 tabulate = "^0.8.10"
 
