@@ -63,14 +63,44 @@ The weights are based on the frequency of the name in the overall scraped datase
 
 ## Corrupt records (`07_corrupt_records.py`)
 
-This script takes the raw data and created duplicate records, introducing errors of various types.
+This script takes the data in `out_data/wikidata/transformed_master_data/one_row_per_person` and created duplicate records, introducing errors of various types.
 
-The script uses a config, which specifies, for each output column: - How to format the input record into an uncorrupted output record - One or more corruptions to apply to that column - Associated probability distributions
+The script uses a config, which specifies, for each output column:
 
-A rough sketch of the algorithm is as follows:
+- How to format the input record into an uncorrupted output record
+- One or more corruptions to apply to that column
+- Associated probability distributions
 
-- Take each input record (person) and clean up using `format_master_data()`
+The config is a list of dictionaries. An example of an element, which produces an output occupation column could look like this:
 
-- Create an uncorrupted output record using `generate_uncorrupted_output_record()`
+```
+    {
+        "col_name": "occupation",
+        "format_master_data": occupation_format_master_record,
+        "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
+        "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
+        "null_function": basic_null_fn("occupation"),
+        "start_prob_corrupt": 0.1,
+        "end_prob_corrupt": 0.7,
+        "start_prob_null": 0.0,
+        "end_prob_null": 0.5,
+    },
+```
 
-- Create a series of corrupted records, using the config.
+This example will be used below to describe how it works.
+
+A rough sketch of the algorithm is as follows.
+
+- Take each input record (person) and convert the record into a dictionary called `formatted_master_record`
+
+For each item in the config
+
+- Apply the function provided at `format_master_data` and apply the function provided `format_master_data()`. This is sometimes needed to further prepare input data into something easy to corrupt. In our example, the function `occupation_format_master_record` is called.
+
+- Create an uncorrupted output record using the function provided at `gen_uncorrupted_record`, in our case `occupation_gen_uncorrupted_record`. This will often selects the 'best' item from the list of alternatives. It's main use is to turn the input data, which is often a list, into a single value
+
+- Create a series of corrupted records, using one or more corruption functions provided at the key `corruption_functions`. In this example it's a single function: `[{"fn": occupation_corrupt, "p": 1.0}],` but more could be provided. `p` should sum to 1.
+
+- With some probability, apply the function at the `null_function` key. Here we use a generic function `basic_null_fn` that results in null with some probability. A more sophisticated function could null out only parts of the information e.g. a middle name from a full name field.
+
+- The remaining keys `start_prob_corrupt`,`end_prob_corrupt`,`start_prob_null`,`end_prob_null` control the probability with which corruptions are applied. A linear interpolation is used such that these probabilities increase for each additional corrupted record generated for an individual.

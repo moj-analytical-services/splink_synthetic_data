@@ -55,10 +55,10 @@ config = [
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
         "corruption_functions": [{"fn": full_name_corrupt, "p": 1.0}],
         "null_function": full_name_null,
-        "start_prob_corrupt": 0.1,
+        "start_prob_corrupt": 0.4,
         "end_prob_corrupt": 0.7,
         "start_prob_null": 0.0,
-        "end_prob_null": 0.5,
+        "end_prob_null": 0.2,
     },
     {
         "col_name": "occupation",
@@ -74,13 +74,12 @@ config = [
 ]
 
 
-con = duckdb.connect(":memory:")
+con = duckdb.connect()
 
 sql = """
 select *
-from 'tidied.parquet'
-where dod[1] = '1993-11-01'
-limit 13
+from 'out_data/wikidata/transformed_master_data/one_row_per_person/transformed_master_data.parquet'
+limit 10
 """
 
 

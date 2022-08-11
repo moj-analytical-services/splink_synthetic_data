@@ -119,11 +119,12 @@ def generate_corrupted_output_records(
 
         corrupted_record = fn(formatted_master_record, corrupted_record)
 
-        null_fn = c["null_function"]
-        corrupted_record = null_fn(
-            formatted_master_record,
-            null_prob=prob_null,
-            corrupted_record=corrupted_record,
-        )
+        if random.uniform(0, 1) < prob_null:
+            null_fn = c["null_function"]
+            corrupted_record = null_fn(
+                formatted_master_record,
+                null_prob=prob_null,
+                corrupted_record=corrupted_record,
+            )
 
     return corrupted_record
