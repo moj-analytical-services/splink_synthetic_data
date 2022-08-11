@@ -23,7 +23,15 @@ from corrupt.corrupt_name import (
     full_name_gen_uncorrupted_record,
     full_name_alternative,
     each_name_alternatives,
+    full_name_typo,
     full_name_null,
+)
+
+from corrupt.corrupt_dob import (
+    dob_gen_uncorrupted_record,
+    dob_corrupt_typo,
+    dob_corrupt_timedelta,
+    dob_format_master_record,
 )
 
 from corrupt.geco_corrupt import get_zipf_dist
@@ -54,13 +62,14 @@ config = [
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
         "corruption_functions": [
             {"fn": full_name_alternative, "p": 0.5},
-            {"fn": each_name_alternatives, "p": 0.5},
+            {"fn": each_name_alternatives, "p": 0.4},
+            {"fn": full_name_typo, "p": 0.1},
         ],
         "null_function": full_name_null,
-        "start_prob_corrupt": 0.2,
-        "end_prob_corrupt": 1.0,
+        "start_prob_corrupt": 0.1,
+        "end_prob_corrupt": 0.6,
         "start_prob_null": 0.0,
-        "end_prob_null": 0.2,
+        "end_prob_null": 0.5,
     },
     {
         "col_name": "occupation",
@@ -73,6 +82,17 @@ config = [
         "start_prob_null": 0.0,
         "end_prob_null": 0.5,
     },
+    {
+        "col_name": "dob",
+        "format_master_data": dob_format_master_record,
+        "gen_uncorrupted_record": dob_gen_uncorrupted_record,
+        "corruption_functions": [{"fn": dob_corrupt_timedelta, "p": 1.0}],
+        "null_function": basic_null_fn("dob"),
+        "start_prob_corrupt": 1.0,
+        "end_prob_corrupt": 1.0,
+        "start_prob_null": 0.0,
+        "end_prob_null": 0.0,
+    },
 ]
 
 
@@ -81,7 +101,7 @@ con = duckdb.connect()
 sql = """
 select *
 from 'out_data/wikidata/transformed_master_data/one_row_per_person/transformed_master_data.parquet'
-limit 50
+limit 500
 """
 
 

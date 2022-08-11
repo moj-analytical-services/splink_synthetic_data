@@ -1,7 +1,10 @@
 import numpy as np
 import functools
-
+import random
 import pandas as pd
+from pyarrow import null
+
+from corrupt.geco_corrupt import CorruptValueQuerty, position_mod_uniform
 
 
 @functools.lru_cache(maxsize=None)
@@ -76,7 +79,55 @@ def each_name_alternatives(formatted_master_record, corrupted_record={}):
     return corrupted_record
 
 
-def full_name_null(master_record, null_prob, corrupted_record={}):
+def full_name_typo(formatted_master_record, corrupted_record={}):
 
-    corrupted_record["full_name"] = None
+    options = formatted_master_record["full_name_arr"]
+
+    if options is None:
+        corrupted_record["full_name"] = None
+        return corrupted_record
+
+    full_name = options[0]
+
+    querty_corruptor = CorruptValueQuerty(
+        position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
+    )
+
+    if corrupted_record["num_name_corruptions"] == 0:
+
+        corrupted_record["full_name"] = querty_corruptor.corrupt_value(full_name)
+    corrupted_record["num_name_corruptions"] += 1
+    return corrupted_record
+
+
+def full_name_null(formatted_master_record, null_prob, corrupted_record={}):
+
+    new_name = corrupted_record["full_name"].split(" ")
+
+    try:
+        first = new_name.pop(0)
+    except IndexError:
+        first = None
+    try:
+        last = new_name.pop()
+    except IndexError:
+        last = None
+
+    # Erase middle names with probability 0.5
+    new_name = [n for n in new_name if random.uniform(0, 1) > null_prob]
+
+    # Erase first or last name with prob null prob
+
+    if random.uniform(0, 1) > null_prob / 2:
+        first = None
+    if random.uniform(0, 1) > null_prob / 2:
+        last = None
+
+    new_name = [first] + new_name + [last]
+
+    new_name = [n for n in new_name if n is not None]
+    if len(new_name) > 0:
+        corrupted_record["full_name"] = " ".join(new_name)
+    else:
+        corrupted_record["full_name"] = None
     return corrupted_record
