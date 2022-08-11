@@ -1,9 +1,7 @@
-import random
 import pandas as pd
 import numpy as np
 
 import duckdb
-import pyarrow.parquet as pq
 
 
 from corrupt.corruption_functions import (
@@ -23,7 +21,8 @@ from corrupt.corrupt_occupation import (
 
 from corrupt.corrupt_name import (
     full_name_gen_uncorrupted_record,
-    full_name_corrupt,
+    full_name_alternative,
+    each_name_alternatives,
     full_name_null,
 )
 
@@ -53,10 +52,13 @@ config = [
         "col_name": "full_name",
         "format_master_data": master_record_no_op,
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
-        "corruption_functions": [{"fn": full_name_corrupt, "p": 1.0}],
+        "corruption_functions": [
+            {"fn": full_name_alternative, "p": 0.5},
+            {"fn": each_name_alternatives, "p": 0.5},
+        ],
         "null_function": full_name_null,
-        "start_prob_corrupt": 0.4,
-        "end_prob_corrupt": 0.7,
+        "start_prob_corrupt": 0.2,
+        "end_prob_corrupt": 1.0,
         "start_prob_null": 0.0,
         "end_prob_null": 0.2,
     },
@@ -79,7 +81,7 @@ con = duckdb.connect()
 sql = """
 select *
 from 'out_data/wikidata/transformed_master_data/one_row_per_person/transformed_master_data.parquet'
-limit 10
+limit 50
 """
 
 
@@ -133,4 +135,8 @@ num_cols = [c for c in cols if c.startswith("num_")]
 other_cols = [c for c in cols if not c.startswith("num_") and c != "uncorrupted_record"]
 
 select = other_cols + ["uncorrupted_record"] + num_cols
-df[select]
+
+ids = list(df["id"].unique())
+ids = np.random.choice(ids, 3, replace=False)
+f = df["id"].isin(ids)
+df[f][select]
