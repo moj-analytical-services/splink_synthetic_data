@@ -59,6 +59,8 @@ The idea is that these could then be fed to `np.random.choice(names, p=weights)`
 
 The weights are based on the frequency of the name in the overall scraped dataset i.e. more common names will be assigned a higher weight.
 
+## Adding additional fields useful to the corruption process (`05_transform_raw_data.py`)
+
 ## Corrupt records (`07_corrupt_records.py`)
 
 This script takes the raw data and created duplicate records, introducing errors of various types.
