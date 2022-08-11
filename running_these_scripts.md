@@ -47,6 +47,18 @@ Note that, for consistency, all fields contain lists. So Winston Churchill's dat
 
 And where a value does not exist, the field will still contain a list with a single value `[Null]`
 
+## Deriving alternative names lookups (`04_create_name_lookups.py`)
+
+This creates two tables, for given and family names respectively, that have weighted aliases:
+
+| original_name | alt_name_arr                      | alt_name_weight_arr      |
+| :------------ | :-------------------------------- | :----------------------- |
+| jody          | ['joseph', 'joe', 'judith', 'jo'] | [0.43, 0.23, 0.16, 0.16] |
+
+The idea is that these could then be fed to `np.random.choice(names, p=weights)` to choose alternative names
+
+The weights are based on the frequency of the name in the overall scraped dataset i.e. more common names will be assigned a higher weight.
+
 ## Corrupt records (`07_corrupt_records.py`)
 
 This script takes the raw data and created duplicate records, introducing errors of various types.

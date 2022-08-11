@@ -1,5 +1,5 @@
 import pyarrow.parquet as pq
-from corrupt.alt_name_lookups import (
+from transform_master_data.alt_name_lookups import (
     get_name_weighted_lookup,
 )
 import duckdb

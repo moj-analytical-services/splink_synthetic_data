@@ -1,101 +1,114 @@
 import duckdb
 from transform_master_data.pipeline import SQLPipeline
-
-path = "/Users/robinlinacre/Documents/data_linking/splink_synthetic_data/out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet"
-con = duckdb.connect()
-
-pipeline = SQLPipeline(con)
-
-sql = f"""
-select
-    humanLabel,
-    case when
-        humanAltLabel[1] is null then []
-        else str_split(humanAltLabel[1], ', ')
-    end as humanAltLabel,
-
-    given_nameLabel,
-    family_nameLabel,
-    humanDescription
-from '{path}'
-"""
-
-pipeline.enqueue_sql(sql, "rel_human_alt_label_array_fixed")
+from transform_master_data.tokens_in_full_name_not_in_given_family_name import (
+    tokens_in_full_name_not_in_given_family_name,
+)
 
 
-sql = """
-select list_concat(humanLabel,  humanAltLabel) as humanLabel
-from rel_human_alt_label_array_fixed
-"""
+df = tokens_in_full_name_not_in_given_family_name()
+df
+# path = "/Users/robinlinacre/Documents/data_linking/splink_synthetic_data/out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet"
+# con = duckdb.connect()
 
-pipeline.enqueue_sql(sql, "rel_human_labels_as_array")
+# pipeline = SQLPipeline(con)
 
+# sql = f"""
+# select
+#     humanLabel,
+#     case when
+#         humanAltLabel[1] is null then []
+#         else str_split(humanAltLabel[1], ', ')
+#     end as humanAltLabel,
 
-sql = """
-select str_split(unnest(humanLabel), ' ') as hl
-from rel_human_labels_as_array
-"""
-pipeline.enqueue_sql(sql, "unnested_human_labels")
+#     given_nameLabel,
+#     family_nameLabel,
+#     humanDescription
+# from '{path}'
+# """
 
-sql = """
-
-select lower(unnest(hl)) as name_token
-from unnested_human_labels
-"""
-
-pipeline.enqueue_sql(sql, "all_tokens_in_human_label")
-
-sql = """
-select name_token, count(*) as token_count
-from all_tokens_in_human_label
-group by name_token
-"""
-
-pipeline.enqueue_sql(sql, "all_tokens_in_human_label_counts")
-
-sql = """
-select original_name as name_token
-from  'out_data/wikidata/processed/alt_name_lookups/*.parquet'
-"""
-
-pipeline.enqueue_sql(sql, "all_tokens_in_given_family_names")
+# pipeline.enqueue_sql(sql, "rel_human_alt_label_array_fixed")
 
 
-sql = """
-select name_token, token_count
-from all_tokens_in_human_label_counts
+# sql = """
+# select list_concat(humanLabel,  humanAltLabel) as humanLabel
+# from rel_human_alt_label_array_fixed
+# """
 
-where name_token not in (select name_token from all_tokens_in_given_family_names)
-order by token_count desc
-"""
-pipeline.enqueue_sql(sql, "tokens_in_human_label_not_in_given_family_names")
-df = pipeline.execute_pipeline().df()
+# pipeline.enqueue_sql(sql, "rel_human_labels_as_array")
 
 
-import pandas as pd
+# sql = """
+# select str_split(unnest(humanLabel), ' ') as hl
+# from rel_human_labels_as_array
+# """
+# pipeline.enqueue_sql(sql, "unnested_human_labels")
 
-pd.options.display.max_columns = 1000
-pd.options.display.max_rows = 1000
+# sql = """
 
-df.head(200)
+# select lower(unnest(hl)) as name_token
+# from unnested_human_labels
+# """
+
+# pipeline.enqueue_sql(sql, "all_tokens_in_human_label")
+
+# sql = """
+# select name_token, count(*) as token_count
+# from all_tokens_in_human_label
+# group by name_token
+# """
+
+# pipeline.enqueue_sql(sql, "all_tokens_in_human_label_counts")
+
+# sql = """
+# select list_concat(given_nameLabel, family_nameLabel) as names_list
+# from  'out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet'
+# """
+
+# pipeline.enqueue_sql(sql, "raw_given_family_concat")
+
+# sql = """
+# select distinct lower(unnest(names_list)) as name_token
+# from raw_given_family_concat
+# """
+# pipeline.enqueue_sql(sql, "all_tokens_in_given_family_names")
 
 
-sql = f"""
-select *
-from  '{path}'
-where family_nameLabel[1] = 'Blair'
-limit 1
-"""
+# sql = """
+# select name_token, token_count
+# from all_tokens_in_human_label_counts
 
-con.execute(sql).df()
+# where name_token not in (select name_token from all_tokens_in_given_family_names)
+# order by token_count desc
+# """
+# pipeline.enqueue_sql(sql, "tokens_in_human_label_not_in_given_family_names")
+# df = pipeline.execute_pipeline().df()
+# df
 
-df.head(200).sample(10)
+
+# import pandas as pd
+
+# pd.options.display.max_columns = 1000
+# pd.options.display.max_rows = 1000
+
+# df.head(200)
 
 
-sql = """
-select original_name as name_token
-from  'out_data/wikidata/processed/alt_name_lookups/*.parquet'
-where original_name = 'blair'
-"""
+# sql = f"""
+# select *
+# from  '{path}'
+# where family_nameLabel[1] = 'Blair'
+# limit 1
+# """
 
-con.execute(sql).df()
+# con.execute(sql).df()
+
+# df.head(200)
+
+
+# sql = """
+# select original_name as name_token
+# from  'out_data/wikidata/processed/alt_name_lookups/*.parquet'
+# where original_name = 'blair'
+# """
+
+# con.execute(sql).df()
