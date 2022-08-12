@@ -6,7 +6,9 @@ from path_fns.filepaths import (
     PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
 )
 
-base_path = "out_data/wikidata/raw/persons/by_dod"
+# Using arrow to read because it performs schema merging
+# i.e. if some files are missing a column it doesn't matter
+# duckdb doesn't do this
 arrow_table = pq.read_table(PERSONS_BY_DOB_RAW_OUT_PATH)
 
 con = duckdb.connect(":memory:")
@@ -50,7 +52,6 @@ select
     {wikireplace.format(col="ethnicity")},
     ethnicityLabel,
 from df
-limit 10000
 
 ),
 distinct_arrays as (
