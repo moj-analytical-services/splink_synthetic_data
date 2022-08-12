@@ -45,8 +45,8 @@ select
     ethnicityLabel,
 from df
 
-)
-
+),
+distinct_arrays as (
 select
     human,
     list(distinct dod) as dod,
@@ -79,6 +79,39 @@ select
     list(distinct ethnicityLabel) as ethnicityLabel
 from nowikiurl
 group by human
+)
+select
+    human,
+    array_filter(dod, x -> x is not null) as dod,
+    array_filter(family_name, x -> x is not null) as family_name,
+    array_filter(dob, x -> x is not null) as dob,
+    array_filter(given_name, x -> x is not null) as given_name,
+    array_filter(country_citizen, x -> x is not null) as country_citizen,
+    array_filter(occupation, x -> x is not null) as occupation,
+    array_filter(humanLabel, x -> x is not null) as humanLabel,
+    array_filter(given_nameLabel, x -> x is not null) as given_nameLabel,
+    array_filter(family_nameLabel, x -> x is not null) as family_nameLabel,
+    array_filter(occupationLabel, x -> x is not null) as occupationLabel,
+    array_filter(country_citizenLabel, x -> x is not null) as country_citizenLabel,
+    array_filter(sex_or_genderLabel, x -> x is not null) as sex_or_genderLabel,
+    array_filter(place_birth, x -> x is not null) as place_birth,
+    array_filter(birth_coordinates, x -> x is not null) as birth_coordinates,
+    array_filter(birth_country, x -> x is not null) as birth_country,
+    array_filter(place_birthLabel, x -> x is not null) as place_birthLabel,
+    array_filter(birth_countryLabel, x -> x is not null) as birth_countryLabel,
+    array_filter(birth_name, x -> x is not null) as birth_name,
+    array_filter(humanDescription, x -> x is not null) as humanDescription,
+    array_filter(name_native_language, x -> x is not null) as name_native_language,
+    array_filter(humanAltLabel, x -> x is not null) as humanAltLabel,
+    array_filter(residence, x -> x is not null) as residence,
+    array_filter(residence_coordinates, x -> x is not null) as residence_coordinates,
+    array_filter(residenceLabel, x -> x is not null) as residenceLabel,
+    array_filter(residence_countryLabel, x -> x is not null) as residence_countryLabel,
+    array_filter(pseudonym, x -> x is not null) as pseudonym,
+    array_filter(ethnicity, x -> x is not null) as ethnicity,
+    array_filter(ethnicityLabel, x -> x is not null) as ethnicityLabel
+from distinct_arrays
+
 
 """
 
