@@ -3,6 +3,13 @@ from transform_master_data.alt_name_lookups import (
     get_name_weighted_lookup,
 )
 import duckdb
+from path_fns.filepaths import (
+    NAMES_RAW_OUT_PATH_GIVEN_NAME,
+    NAMES_RAW_OUT_PATH_FAMILY_NAME,
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
+    NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP,
+    NAMES_PROCESSED_FAMILY_NAME_ALT_LOOKUP,
+)
 
 # Use the alternative names in out_data/wikidata/raw/names
 # to create lookups like.  These can then be fed to numpy np.random.choice(names, p=weights)
@@ -14,25 +21,24 @@ import duckdb
 
 con = duckdb.connect()
 
-alt_names_given = pq.read_table("out_data/wikidata/raw/names/name_type=given/")
+alt_names_given = pq.read_table(NAMES_RAW_OUT_PATH_GIVEN_NAME)
 con.register("alt_names_given", alt_names_given)
 
-input_file_name = "'out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet'"
 
 weighted_lookup_given_name = get_name_weighted_lookup(
-    con, "given_nameLabel", "alt_names_given", input_file_name
+    con, "given_nameLabel", "alt_names_given", PERSONS_PROCESSED_ONE_ROW_PER_PERSON
 )
 weighted_lookup_given_name = weighted_lookup_given_name.fetch_arrow_table()
 
-out_path = "out_data/wikidata/processed/alt_name_lookups/given_name_lookup.parquet"
-pq.write_table(weighted_lookup_given_name, out_path)
+
+pq.write_table(weighted_lookup_given_name, NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP)
 
 
-alt_names_family = pq.read_table("out_data/wikidata/raw/names/name_type=family/")
+alt_names_family = pq.read_table(NAMES_RAW_OUT_PATH_FAMILY_NAME)
 con.register("alt_names_family", alt_names_family)
 weighted_lookup_family_name = get_name_weighted_lookup(
-    con, "family_nameLabel", "alt_names_family", input_file_name
+    con, "family_nameLabel", "alt_names_family", PERSONS_PROCESSED_ONE_ROW_PER_PERSON
 )
 weighted_lookup_family_name = weighted_lookup_family_name.fetch_arrow_table()
-out_path = "out_data/wikidata/processed/alt_name_lookups/family_name_lookup.parquet"
-pq.write_table(weighted_lookup_family_name, out_path)
+
+pq.write_table(weighted_lookup_family_name, NAMES_PROCESSED_FAMILY_NAME_ALT_LOOKUP)
