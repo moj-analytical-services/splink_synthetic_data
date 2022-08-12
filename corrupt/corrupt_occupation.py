@@ -11,14 +11,14 @@ def occupation_format_master_record(master_input_record):
     return master_input_record
 
 
-def occupation_gen_uncorrupted_record(formatted_master_record, uncorrupted_record={}):
+def occupation_gen_uncorrupted_record(formatted_master_record, corrupted_record={}):
     if formatted_master_record["_list_occupations"] is None:
-        uncorrupted_record["occupation"] = None
+        corrupted_record["occupation"] = None
     else:
-        uncorrupted_record["occupation"] = ", ".join(
+        corrupted_record["occupation"] = ", ".join(
             formatted_master_record["_list_occupations"]
         )
-    return uncorrupted_record
+    return corrupted_record
 
 
 def occupation_corrupt(formatted_master_record, corrupted_record={}):

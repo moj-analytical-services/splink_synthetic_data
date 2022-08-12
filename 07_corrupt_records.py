@@ -28,12 +28,16 @@ from corrupt.corrupt_name import (
 )
 
 from corrupt.corrupt_dob import (
-    dob_gen_uncorrupted_record,
-    dob_corrupt_typo,
-    dob_corrupt_timedelta,
     dob_format_master_record,
 )
 
+from corrupt.corrupt_date import (
+    date_corrupt_timedelta,
+    date_corrupt_typo,
+    date_gen_uncorrupted_record,
+)
+
+from functools import partial
 from corrupt.geco_corrupt import get_zipf_dist
 
 
@@ -85,8 +89,11 @@ config = [
     {
         "col_name": "dob",
         "format_master_data": dob_format_master_record,
-        "gen_uncorrupted_record": dob_gen_uncorrupted_record,
-        "corruption_functions": [{"fn": dob_corrupt_timedelta, "p": 1.0}],
+        "gen_uncorrupted_record": partial(date_gen_uncorrupted_record, colname="dob"),
+        "corruption_functions": [
+            {"fn": partial(date_corrupt_timedelta, colname="dob"), "p": 0.7},
+            {"fn": partial(date_corrupt_typo, colname="dob"), "p": 0.3},
+        ],
         "null_function": basic_null_fn("dob"),
         "start_prob_corrupt": 1.0,
         "end_prob_corrupt": 1.0,
@@ -104,7 +111,7 @@ from 'out_data/wikidata/transformed_master_data/one_row_per_person/transformed_m
 limit 500
 """
 
-
+pd.options.display.max_columns = 1000
 raw_data = con.execute(sql).df()
 raw_data
 

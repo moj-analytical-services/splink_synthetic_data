@@ -21,9 +21,9 @@ def get_family_name_alternatives_lookup():
     return df.to_dict(orient="index")
 
 
-def full_name_gen_uncorrupted_record(master_record, uncorrupted_record={}):
-    uncorrupted_record["full_name"] = master_record["humanLabel"][0]
-    return uncorrupted_record
+def full_name_gen_uncorrupted_record(master_record, corrupted_record={}):
+    corrupted_record["full_name"] = master_record["humanLabel"][0]
+    return corrupted_record
 
 
 def full_name_alternative(formatted_master_record, corrupted_record={}):

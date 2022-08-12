@@ -11,9 +11,12 @@ def add_full_name_alternatives_per_person(
             humanAltLabel[1] is null then []
             else str_split(humanAltLabel[1], ', ')
         end as humanAltLabel_fix,
+        case when
+            pseudonym[1] is null then []
+            else str_split(pseudonym[1], ', ')
+        end as pseudonym_fix,
 
     from {one_row_per_person_tablename}
-    where humanAltLabel is not null
     """
 
     pipeline.enqueue_sql(sql, "rel_human_alt_label_array_fixed")
@@ -21,8 +24,8 @@ def add_full_name_alternatives_per_person(
     # Create a list of all the human labels and human alt labels
     sql = """
     select
-        * EXCLUDE (humanAltLabel_fix),
-        list_concat(humanLabel,  humanAltLabel_fix) as full_name_arr
+        * EXCLUDE (humanAltLabel_fix, pseudonym_fix),
+        list_concat(humanLabel,  humanAltLabel_fix, pseudonym_fix) as full_name_arr
     from rel_human_alt_label_array_fixed
     """
 
