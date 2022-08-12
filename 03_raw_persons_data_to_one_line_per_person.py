@@ -1,8 +1,13 @@
 import duckdb
 import pyarrow.parquet as pq
 
-base_path = "out_data/wikidata/raw/persons/by_dob"
-arrow_table = pq.read_table(base_path)
+from path_fns.filepaths import (
+    PERSONS_BY_DOB_RAW_OUT_PATH,
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
+)
+
+base_path = "out_data/wikidata/raw/persons/by_dod"
+arrow_table = pq.read_table(PERSONS_BY_DOB_RAW_OUT_PATH)
 
 con = duckdb.connect(":memory:")
 con.register("df", arrow_table)
@@ -11,6 +16,7 @@ wikireplace = """replace({col}, 'http://www.wikidata.org/entity/', '') as {col}"
 cast_date = "TRY_CAST({col} as date) as {col}"
 
 sql = f"""
+COPY (
 with nowikiurl as
 (
 select
@@ -44,6 +50,7 @@ select
     {wikireplace.format(col="ethnicity")},
     ethnicityLabel,
 from df
+limit 10000
 
 ),
 distinct_arrays as (
@@ -111,35 +118,35 @@ select
     array_filter(ethnicity, x -> x is not null) as ethnicity,
     array_filter(ethnicityLabel, x -> x is not null) as ethnicityLabel
 from distinct_arrays
-
+)
+TO '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}' (FORMAT 'parquet')
 
 """
 
 
-tidied = con.execute(sql)
+con.execute(sql)
 
-tidied_arrow = tidied.fetch_arrow_table()
-
-out_path = "out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet"
-pq.write_table(tidied_arrow, out_path)
 
 import pandas as pd
 
 pd.options.display.max_columns = 1000
 
-con.execute(
-    f"""
+display(
+    con.execute(
+        f"""
 select count(*)
-from '{out_path}'
+from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
 """
-).df()
+    ).df()
+)
 
+# USING SAMPLE 0.01% (bernoulli)
 con.execute(
     f"""
 select *
-from '{out_path}'
-where residence[1] is not null
-USING SAMPLE 0.01% (bernoulli)
+from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
+
+
 
 limit 1
 """
