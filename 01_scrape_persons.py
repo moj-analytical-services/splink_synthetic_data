@@ -5,11 +5,12 @@ import os
 import pandas as pd
 
 from scrape_wikidata.query_wikidata import query_with_date, QUERY_HUMAN
+from path_fns.filepaths import PERSONS_BY_DOB_RAW_OUT_PATH, persons_by_dob_raw_filename
 
 from pathlib import Path
 
-out_folder = "out_data/wikidata/raw/persons/by_dob"
-Path(out_folder).mkdir(parents=True, exist_ok=True)
+
+Path(PERSONS_BY_DOB_RAW_OUT_PATH).mkdir(parents=True, exist_ok=True)
 
 
 def days_in_month(year, month):
@@ -22,7 +23,7 @@ def days_in_month(year, month):
 for year in range(2000, 1800, -1):
     for month in range(12, 0, -1):
         date_list = days_in_month(year, month)
-        filename = f"{out_folder}/dod_{year}_{month:02}.parquet"
+        filename = persons_by_dob_raw_filename(year, month)
         dfs = []
         start_time = time.time()
         if not os.path.exists(filename):
