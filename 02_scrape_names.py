@@ -8,23 +8,17 @@ from scrape_wikidata.names import (
     SQL_HYPOCORISM,
     get_standardised_table,
     get_diminutives,
-    get_given_name_weighted_lookup,
-    get_family_name_weighted_lookup,
 )
 
+from path_fns.filepaths import (
+    NAMES_RAW_OUT_PATH_GIVEN_NAME,
+    NAMES_RAW_OUT_PATH_FAMILY_NAME,
+)
 
 from pathlib import Path
 
-out_folder = "out_data/wikidata/raw/persons/by_dob"
-
-
-BASE_PATH = "out_data/wikidata/raw/names/"
-BASE_PATH_GN = os.path.join(BASE_PATH, "name_type=given")
-BASE_PATH_FN = os.path.join(BASE_PATH, "name_type=family")
-
-Path(BASE_PATH).mkdir(parents=True, exist_ok=True)
-Path(BASE_PATH_GN).mkdir(parents=True, exist_ok=True)
-Path(BASE_PATH_FN).mkdir(parents=True, exist_ok=True)
+Path(NAMES_RAW_OUT_PATH_GIVEN_NAME).mkdir(parents=True, exist_ok=True)
+Path(NAMES_RAW_OUT_PATH_FAMILY_NAME).mkdir(parents=True, exist_ok=True)
 
 # %%
 
@@ -32,7 +26,7 @@ Path(BASE_PATH_FN).mkdir(parents=True, exist_ok=True)
 for page in range(0, 100, 1):
     pagesize = 5000
     path = os.path.join(
-        BASE_PATH_GN,
+        NAMES_RAW_OUT_PATH_GIVEN_NAME,
         f"stbtsa_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
 
@@ -56,7 +50,7 @@ for page in range(0, 100, 1):
     pagesize = 5000
 
     path = os.path.join(
-        BASE_PATH_FN,
+        NAMES_RAW_OUT_PATH_FAMILY_NAME,
         f"stbtsa_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
 
@@ -78,7 +72,7 @@ for page in range(0, 100, 1):
 for page in range(0, 100, 1):
     pagesize = 5000
     path = os.path.join(
-        BASE_PATH_GN,
+        NAMES_RAW_OUT_PATH_GIVEN_NAME,
         f"nickname_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
 
@@ -96,7 +90,7 @@ for page in range(0, 100, 1):
 for page in range(0, 100, 1):
     pagesize = 5000
     path = os.path.join(
-        BASE_PATH_GN,
+        NAMES_RAW_OUT_PATH_GIVEN_NAME,
         f"shortname_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
 
@@ -114,7 +108,7 @@ for page in range(0, 100, 1):
 for page in range(0, 100, 1):
     pagesize = 5000
     path = os.path.join(
-        BASE_PATH_GN,
+        NAMES_RAW_OUT_PATH_GIVEN_NAME,
         f"hypo_page_{page}_{page*pagesize}_to_{(page+1)*pagesize-1}.parquet",
     )
     if not os.path.exists(path):
@@ -130,7 +124,7 @@ for page in range(0, 100, 1):
 # %%
 diminutives = get_diminutives()
 path = os.path.join(
-    BASE_PATH_GN,
+    NAMES_RAW_OUT_PATH_GIVEN_NAME,
     "diminutives.parquet",
 )
 diminutives.to_parquet(
