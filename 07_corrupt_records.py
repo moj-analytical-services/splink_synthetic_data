@@ -167,3 +167,6 @@ ids = list(df["id"].unique())
 ids = np.random.choice(ids, 3, replace=False)
 f = df["id"].isin(ids)
 df[f][select]
+
+
+## TODO:  change argument corrupted reocrd  to just 'in record'
