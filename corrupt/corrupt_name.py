@@ -26,28 +26,28 @@ def full_name_gen_uncorrupted_record(master_record, corrupted_record={}):
     return corrupted_record
 
 
-def full_name_alternative(formatted_master_record, corrupted_record={}):
+def full_name_alternative(formatted_master_record, input_record={}):
     """Choose an alternative full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
     if options is None:
-        corrupted_record["full_name"] = None
+        input_record["full_name"] = None
     elif len(options) == 1:
-        corrupted_record["full_name"] = options[0]
+        input_record["full_name"] = options[0]
     else:
-        corrupted_record["full_name"] = np.random.choice(options).lower()
-        corrupted_record["num_name_corruptions"] += 1
-    return corrupted_record
+        input_record["full_name"] = np.random.choice(options).lower()
+        input_record["num_name_corruptions"] += 1
+    return input_record
 
 
-def each_name_alternatives(formatted_master_record, corrupted_record={}):
+def each_name_alternatives(formatted_master_record, input_record={}):
     """Choose a full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
 
     if options is None:
-        corrupted_record["full_name"] = None
-        return corrupted_record
+        input_record["full_name"] = None
+        return input_record
 
     full_name = options[0]
 
@@ -64,28 +64,28 @@ def each_name_alternatives(formatted_master_record, corrupted_record={}):
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            corrupted_record["num_name_corruptions"] += 1
+            input_record["num_name_corruptions"] += 1
         elif n in family_name_alt_lookup:
             name_dict = family_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            corrupted_record["num_name_corruptions"] += 1
+            input_record["num_name_corruptions"] += 1
         else:
             output_names.append(n)
 
-    corrupted_record["full_name"] = " ".join(output_names).lower()
+    input_record["full_name"] = " ".join(output_names).lower()
 
-    return corrupted_record
+    return input_record
 
 
-def full_name_typo(formatted_master_record, corrupted_record={}):
+def full_name_typo(formatted_master_record, input_record={}):
 
     options = formatted_master_record["full_name_arr"]
 
     if options is None:
-        corrupted_record["full_name"] = None
-        return corrupted_record
+        input_record["full_name"] = None
+        return input_record
 
     full_name = options[0]
 
@@ -93,16 +93,16 @@ def full_name_typo(formatted_master_record, corrupted_record={}):
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
     )
 
-    if corrupted_record["num_name_corruptions"] == 0:
+    if input_record["num_name_corruptions"] == 0:
 
-        corrupted_record["full_name"] = querty_corruptor.corrupt_value(full_name)
-    corrupted_record["num_name_corruptions"] += 1
-    return corrupted_record
+        input_record["full_name"] = querty_corruptor.corrupt_value(full_name)
+    input_record["num_name_corruptions"] += 1
+    return input_record
 
 
-def full_name_null(formatted_master_record, null_prob, corrupted_record={}):
+def full_name_null(formatted_master_record, null_prob, input_record={}):
 
-    new_name = corrupted_record["full_name"].split(" ")
+    new_name = input_record["full_name"].split(" ")
 
     try:
         first = new_name.pop(0)
@@ -127,7 +127,7 @@ def full_name_null(formatted_master_record, null_prob, corrupted_record={}):
 
     new_name = [n for n in new_name if n is not None]
     if len(new_name) > 0:
-        corrupted_record["full_name"] = " ".join(new_name)
+        input_record["full_name"] = " ".join(new_name)
     else:
-        corrupted_record["full_name"] = None
-    return corrupted_record
+        input_record["full_name"] = None
+    return input_record
