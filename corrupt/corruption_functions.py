@@ -61,7 +61,7 @@ def generate_uncorrupted_output_record(formatted_master_record, config):
     for c in config:
         fn = c["gen_uncorrupted_record"]
         uncorrupted_record = fn(
-            formatted_master_record, corrupted_record=uncorrupted_record
+            formatted_master_record, input_record=uncorrupted_record
         )
 
     return uncorrupted_record
@@ -117,12 +117,12 @@ def generate_corrupted_output_records(
         if random.uniform(0, 1) < prob_corrupt:
             fn = corruption_function
             corrupted_record = fn(
-                formatted_master_record, corrupted_record=corrupted_record
+                formatted_master_record, input_record=corrupted_record
             )
         else:
             fn = c["gen_uncorrupted_record"]
             corrupted_record = fn(
-                formatted_master_record, corrupted_record=corrupted_record
+                formatted_master_record, input_record=corrupted_record
             )
 
         if random.uniform(0, 1) < prob_null:
@@ -130,7 +130,7 @@ def generate_corrupted_output_records(
             corrupted_record = null_fn(
                 formatted_master_record,
                 null_prob=prob_null,
-                corrupted_record=corrupted_record,
+                input_record=corrupted_record,
             )
 
     return corrupted_record

@@ -43,21 +43,28 @@ from corrupt.geco_corrupt import get_zipf_dist
 
 # Configure how corruptions will be made for each field
 
-# Col name is the OUTPUT column name.  For instance, we may input given name, family name etc to output full_name
+# Col name is the OUTPUT column name.  For instance, we may input given name,
+# family name etc to output full_name
 
 # Guide to keys:
-# format_master_data.  A function that take the input master data - usually an array - and returns a single value.
+# format_master_data.  A function that take the input master data - usually an array -
+# and returns a single value.
 # 'no_op' means no operation, i.e. reproduce the value from the master data.
 
-# We then have an 'exact match' function, which controls how to render the master data into the output data.
+# We then have an 'exact match' function, which controls how to render the master data
+# into the output data.
 
-# For instance, the master data for birth_place may use the person's birth place if it exists, but if it doesn't, may use a known place they lived.
+# For instance, the master data for birth_place may use the person's birth place if it
+# exists, but if it doesn't, may use a known place they lived.
 
-# We then have a dictionary of 'corruption' functions, each with a probability (p) of being applied.
-# This probability is conditional on the record being selected for corruption e.g. add a typo with probability 0.5, or alternatively use an alias with probability 0.5
+# We then have a dictionary of 'corruption' functions, each with a probability (p) of
+# being applied.
+# This probability is conditional on the record being selected for corruption e.g. add
+# a typo with probability 0.5, or alternatively use an alias with probability 0.5
 
 # Finally, as we generate more duplicate records, we introduce more and more errors.
-# The keys start_prob_corrupt, end_prob_corrupt, start_prob_null, end_prob_null control the probability of corruption
+# The keys start_prob_corrupt, end_prob_corrupt, start_prob_null, end_prob_null control
+# the probability of corruption
 
 config = [
     {
