@@ -11,23 +11,23 @@ def occupation_format_master_record(master_input_record):
     return master_input_record
 
 
-def occupation_gen_uncorrupted_record(formatted_master_record, input_record={}):
+def occupation_gen_uncorrupted_record(formatted_master_record, record_to_modify={}):
     if formatted_master_record["_list_occupations"] is None:
-        input_record["occupation"] = None
+        record_to_modify["occupation"] = None
     else:
-        input_record["occupation"] = ", ".join(
+        record_to_modify["occupation"] = ", ".join(
             formatted_master_record["_list_occupations"]
         )
-    return input_record
+    return record_to_modify
 
 
-def occupation_corrupt(formatted_master_record, input_record={}):
+def occupation_corrupt(formatted_master_record, record_to_modify={}):
     options = formatted_master_record["_list_occupations"]
     if options is None:
-        input_record["occupation"] = None
+        record_to_modify["occupation"] = None
     elif len(options) == 1:
-        input_record["occupation"] = options[0]
+        record_to_modify["occupation"] = options[0]
     else:
-        input_record["occupation"] = np.random.choice(list(options))
-        input_record["num_occupation_corruptions"] += 1
-    return input_record
+        record_to_modify["occupation"] = np.random.choice(list(options))
+        record_to_modify["num_occupation_corruptions"] += 1
+    return record_to_modify

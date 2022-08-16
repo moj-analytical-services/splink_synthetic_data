@@ -7,12 +7,12 @@ def master_record_no_op(master_record):
     return master_record
 
 
-def _basic_null_fn_to_partial(master_record, col_name, null_prob, input_record={}):
+def _basic_null_fn_to_partial(master_record, col_name, null_prob, record_to_modify={}):
 
     if random.uniform(0, 1) < null_prob:
-        input_record[col_name] = None
+        record_to_modify[col_name] = None
 
-    return input_record
+    return record_to_modify
 
 
 def basic_null_fn(colname):
@@ -61,7 +61,7 @@ def generate_uncorrupted_output_record(formatted_master_record, config):
     for c in config:
         fn = c["gen_uncorrupted_record"]
         uncorrupted_record = fn(
-            formatted_master_record, input_record=uncorrupted_record
+            formatted_master_record, record_to_modify=uncorrupted_record
         )
 
     return uncorrupted_record
@@ -117,12 +117,12 @@ def generate_corrupted_output_records(
         if random.uniform(0, 1) < prob_corrupt:
             fn = corruption_function
             corrupted_record = fn(
-                formatted_master_record, input_record=corrupted_record
+                formatted_master_record, record_to_modify=corrupted_record
             )
         else:
             fn = c["gen_uncorrupted_record"]
             corrupted_record = fn(
-                formatted_master_record, input_record=corrupted_record
+                formatted_master_record, record_to_modify=corrupted_record
             )
 
         if random.uniform(0, 1) < prob_null:
@@ -130,7 +130,7 @@ def generate_corrupted_output_records(
             corrupted_record = null_fn(
                 formatted_master_record,
                 null_prob=prob_null,
-                input_record=corrupted_record,
+                record_to_modify=corrupted_record,
             )
 
     return corrupted_record

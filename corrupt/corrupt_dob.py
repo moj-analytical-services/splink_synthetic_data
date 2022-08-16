@@ -6,6 +6,6 @@ def dob_format_master_record(master_input_record):
     return master_input_record
 
 
-def dob_gen_uncorrupted_record(formatted_master_record, input_record={}):
-    input_record["dob"] = formatted_master_record["dob"]
-    return input_record
+def dob_gen_uncorrupted_record(formatted_master_record, record_to_modify={}):
+    record_to_modify["dob"] = formatted_master_record["dob"]
+    return record_to_modify

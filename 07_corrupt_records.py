@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 import duckdb
+from corrupt.corrupt_string import string_corrupt_numpad
 
 
 from corrupt.corruption_functions import (
@@ -99,7 +100,7 @@ config = [
         "gen_uncorrupted_record": partial(date_gen_uncorrupted_record, colname="dob"),
         "corruption_functions": [
             {"fn": partial(date_corrupt_timedelta, colname="dob"), "p": 0.7},
-            {"fn": partial(date_corrupt_typo, colname="dob"), "p": 0.3},
+            {"fn": partial(string_corrupt_numpad, colname="dob"), "p": 0.3},
         ],
         "null_function": basic_null_fn("dob"),
         "start_prob_corrupt": 1.0,

@@ -8,16 +8,16 @@ from corrupt.geco_corrupt import (
 )
 
 
-def date_gen_uncorrupted_record(formatted_master_record, colname, input_record={}):
-    input_record["dob"] = str(formatted_master_record[colname])
-    return input_record
+def date_gen_uncorrupted_record(formatted_master_record, colname, record_to_modify={}):
+    record_to_modify["dob"] = str(formatted_master_record[colname])
+    return record_to_modify
 
 
-def date_corrupt_typo(formatted_master_record, colname, input_record={}):
+def date_corrupt_typo(formatted_master_record, colname, record_to_modify={}):
 
     if formatted_master_record[colname] is None:
-        input_record[colname] = None
-        return input_record
+        record_to_modify[colname] = None
+        return record_to_modify
 
     dob = str(formatted_master_record[colname])
     numpad_corruptor = CorruptValueNumpad(
@@ -26,17 +26,17 @@ def date_corrupt_typo(formatted_master_record, colname, input_record={}):
 
     dob_ex_year = dob[2:]
     corrupted_dob_ex_year = numpad_corruptor.corrupt_value(dob_ex_year)
-    input_record[colname] = dob[:2] + corrupted_dob_ex_year
-    if dob != input_record[colname]:
-        input_record["num_dob_corruptions"] += 1
-    return input_record
+    record_to_modify[colname] = dob[:2] + corrupted_dob_ex_year
+    if dob != record_to_modify[colname]:
+        record_to_modify["num_dob_corruptions"] += 1
+    return record_to_modify
 
 
-def date_corrupt_timedelta(formatted_master_record, colname, input_record={}):
+def date_corrupt_timedelta(formatted_master_record, colname, record_to_modify={}):
 
     if formatted_master_record[colname] is None:
-        input_record[colname] = None
-        return input_record
+        record_to_modify[colname] = None
+        return record_to_modify
 
     dob = formatted_master_record[colname]
 
@@ -49,8 +49,8 @@ def date_corrupt_timedelta(formatted_master_record, colname, input_record={}):
     elif choice == "large":
         delta = timedelta(days=random.randint(1000, 1000))
 
-    input_record["num_dob_corruptions"] += 1
+    record_to_modify["num_dob_corruptions"] += 1
 
     dob = dob + delta
-    input_record[colname] = str(dob)
-    return input_record
+    record_to_modify[colname] = str(dob)
+    return record_to_modify

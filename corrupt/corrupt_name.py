@@ -20,33 +20,33 @@ def get_family_name_alternatives_lookup():
     return df.to_dict(orient="index")
 
 
-def full_name_gen_uncorrupted_record(master_record, input_record={}):
-    input_record["full_name"] = master_record["humanLabel"][0]
-    return input_record
+def full_name_gen_uncorrupted_record(master_record, record_to_modify={}):
+    record_to_modify["full_name"] = master_record["humanLabel"][0]
+    return record_to_modify
 
 
-def full_name_alternative(formatted_master_record, input_record={}):
+def full_name_alternative(formatted_master_record, record_to_modify={}):
     """Choose an alternative full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
     if options is None:
-        input_record["full_name"] = None
+        record_to_modify["full_name"] = None
     elif len(options) == 1:
-        input_record["full_name"] = options[0]
+        record_to_modify["full_name"] = options[0]
     else:
-        input_record["full_name"] = np.random.choice(options).lower()
-        input_record["num_name_corruptions"] += 1
-    return input_record
+        record_to_modify["full_name"] = np.random.choice(options).lower()
+        record_to_modify["num_name_corruptions"] += 1
+    return record_to_modify
 
 
-def each_name_alternatives(formatted_master_record, input_record={}):
+def each_name_alternatives(formatted_master_record, record_to_modify={}):
     """Choose a full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
 
     if options is None:
-        input_record["full_name"] = None
-        return input_record
+        record_to_modify["full_name"] = None
+        return record_to_modify
 
     full_name = options[0]
 
@@ -63,28 +63,28 @@ def each_name_alternatives(formatted_master_record, input_record={}):
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            input_record["num_name_corruptions"] += 1
+            record_to_modify["num_name_corruptions"] += 1
         elif n in family_name_alt_lookup:
             name_dict = family_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            input_record["num_name_corruptions"] += 1
+            record_to_modify["num_name_corruptions"] += 1
         else:
             output_names.append(n)
 
-    input_record["full_name"] = " ".join(output_names).lower()
+    record_to_modify["full_name"] = " ".join(output_names).lower()
 
-    return input_record
+    return record_to_modify
 
 
-def full_name_typo(formatted_master_record, input_record={}):
+def full_name_typo(formatted_master_record, record_to_modify={}):
 
     options = formatted_master_record["full_name_arr"]
 
     if options is None:
-        input_record["full_name"] = None
-        return input_record
+        record_to_modify["full_name"] = None
+        return record_to_modify
 
     full_name = options[0]
 
@@ -92,16 +92,16 @@ def full_name_typo(formatted_master_record, input_record={}):
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
     )
 
-    if input_record["num_name_corruptions"] == 0:
+    if record_to_modify["num_name_corruptions"] == 0:
 
-        input_record["full_name"] = querty_corruptor.corrupt_value(full_name)
-    input_record["num_name_corruptions"] += 1
-    return input_record
+        record_to_modify["full_name"] = querty_corruptor.corrupt_value(full_name)
+    record_to_modify["num_name_corruptions"] += 1
+    return record_to_modify
 
 
-def full_name_null(formatted_master_record, null_prob, input_record={}):
+def full_name_null(formatted_master_record, null_prob, record_to_modify={}):
 
-    new_name = input_record["full_name"].split(" ")
+    new_name = record_to_modify["full_name"].split(" ")
 
     try:
         first = new_name.pop(0)
@@ -126,7 +126,7 @@ def full_name_null(formatted_master_record, null_prob, input_record={}):
 
     new_name = [n for n in new_name if n is not None]
     if len(new_name) > 0:
-        input_record["full_name"] = " ".join(new_name)
+        record_to_modify["full_name"] = " ".join(new_name)
     else:
-        input_record["full_name"] = None
-    return input_record
+        record_to_modify["full_name"] = None
+    return record_to_modify
