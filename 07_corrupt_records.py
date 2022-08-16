@@ -97,10 +97,22 @@ config = [
     {
         "col_name": "dob",
         "format_master_data": dob_format_master_record,
-        "gen_uncorrupted_record": partial(date_gen_uncorrupted_record, colname="dob"),
+        "gen_uncorrupted_record": partial(
+            date_gen_uncorrupted_record, input_colname="dob", output_colname="dob"
+        ),
         "corruption_functions": [
-            {"fn": partial(date_corrupt_timedelta, colname="dob"), "p": 0.7},
-            {"fn": partial(string_corrupt_numpad, colname="dob"), "p": 0.3},
+            {
+                "fn": partial(
+                    date_corrupt_timedelta, input_colname="dob", output_colname="dob"
+                ),
+                "p": 0.7,
+            },
+            {
+                "fn": partial(
+                    string_corrupt_numpad, input_colname="dob", output_colname="dob"
+                ),
+                "p": 0.3,
+            },
         ],
         "null_function": basic_null_fn("dob"),
         "start_prob_corrupt": 1.0,

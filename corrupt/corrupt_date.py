@@ -8,37 +8,43 @@ from corrupt.geco_corrupt import (
 )
 
 
-def date_gen_uncorrupted_record(formatted_master_record, colname, record_to_modify={}):
-    record_to_modify["dob"] = str(formatted_master_record[colname])
+def date_gen_uncorrupted_record(
+    formatted_master_record, input_colname, output_colname, record_to_modify={}
+):
+    record_to_modify[output_colname] = str(formatted_master_record[input_colname])
     return record_to_modify
 
 
-def date_corrupt_typo(formatted_master_record, colname, record_to_modify={}):
+def date_corrupt_typo(
+    formatted_master_record, input_colname, output_colname, record_to_modify={}
+):
 
-    if formatted_master_record[colname] is None:
-        record_to_modify[colname] = None
+    if not formatted_master_record[input_colname]:
+        record_to_modify[output_colname] = None
         return record_to_modify
 
-    dob = str(formatted_master_record[colname])
+    input_value_as_str = str(formatted_master_record[input_colname])
     numpad_corruptor = CorruptValueNumpad(
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
     )
 
-    dob_ex_year = dob[2:]
+    dob_ex_year = input_value_as_str[2:]
     corrupted_dob_ex_year = numpad_corruptor.corrupt_value(dob_ex_year)
-    record_to_modify[colname] = dob[:2] + corrupted_dob_ex_year
-    if dob != record_to_modify[colname]:
+    record_to_modify[output_colname] = input_value_as_str[:2] + corrupted_dob_ex_year
+    if input_value_as_str != record_to_modify[output_colname]:
         record_to_modify["num_dob_corruptions"] += 1
     return record_to_modify
 
 
-def date_corrupt_timedelta(formatted_master_record, colname, record_to_modify={}):
+def date_corrupt_timedelta(
+    formatted_master_record, input_colname, output_colname, record_to_modify={}
+):
 
-    if formatted_master_record[colname] is None:
-        record_to_modify[colname] = None
+    if formatted_master_record[input_colname]:
+        record_to_modify[output_colname] = None
         return record_to_modify
 
-    dob = formatted_master_record[colname]
+    input_value = formatted_master_record[input_colname]
 
     choice = np.random.choice(["small", "medium", "large"], p=[0.7, 0.2, 0.1])
 
@@ -51,6 +57,6 @@ def date_corrupt_timedelta(formatted_master_record, colname, record_to_modify={}
 
     record_to_modify["num_dob_corruptions"] += 1
 
-    dob = dob + delta
-    record_to_modify[colname] = str(dob)
+    input_value = input_value + delta
+    record_to_modify[output_colname] = str(input_value)
     return record_to_modify
