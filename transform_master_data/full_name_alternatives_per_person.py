@@ -1,6 +1,9 @@
+from path_fns.filepaths import PERSONS_PROCESSED_ONE_ROW_PER_PERSON
+
+
 def add_full_name_alternatives_per_person(
     pipeline,
-    one_row_per_person_tablename="'out_data/wikidata/processed/one_row_per_person/raw_scraped_one_row_per_person.parquet'",
+    one_row_per_person_tablename=f"'{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'",
 ):
 
     # Ensure humanAltLabel is a (potentially empty) array

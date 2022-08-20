@@ -35,3 +35,15 @@ NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP = os.path.join(
 NAMES_PROCESSED_FAMILY_NAME_ALT_LOOKUP = os.path.join(
     OUT_BASE, WIKIDATA, PROCESSED, "alt_name_lookups", "family_name_lookup.parquet"
 )
+
+# Transformed master data
+TRANSFORMED = "transformed_master_data"
+TRANSFORMED_MASTER_DATA = os.path.join(
+    OUT_BASE,
+    WIKIDATA,
+    TRANSFORMED,
+)
+
+TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON = os.path.join(
+    TRANSFORMED_MASTER_DATA, "one_row_per_person"
+)
