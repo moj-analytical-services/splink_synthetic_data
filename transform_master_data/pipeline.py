@@ -30,12 +30,12 @@ class SQLPipeline:
     def execute_pipeline_in_parts(self):
         for sql_task in self.queue:
 
-            df_arrow = self.con.execute(sql_task.sql).fetch_arrow_table()
-
-            self.con.register(sql_task.output_table_name, df_arrow)
             print("---")
             print(sql_task.output_table_name)
             print(sql_task.sql)
+
+            df_arrow = self.con.execute(sql_task.sql).fetch_arrow_table()
+            self.con.register(sql_task.output_table_name, df_arrow)
 
             df_to_show = self.con.execute(
                 f"select * from {sql_task.output_table_name} limit 5"

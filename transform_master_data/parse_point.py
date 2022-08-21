@@ -1,5 +1,5 @@
 def parse_point_to_lat_lng(
-    pipeline, colname_to_replace, output_df_name, input_table_name="df"
+    pipeline, colname_to_replace, output_table_name, input_table_name="df"
 ):
 
     intermediate_df_name_1 = f"space_delimited_coordinates_{colname_to_replace}"
@@ -34,5 +34,5 @@ def parse_point_to_lat_lng(
     from {intermediate_df_name_2}
     """
 
-    pipeline.enqueue_sql(sql, output_df_name)
+    pipeline.enqueue_sql(sql, output_table_name)
     return pipeline

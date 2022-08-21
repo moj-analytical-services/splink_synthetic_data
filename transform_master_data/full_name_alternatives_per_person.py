@@ -1,15 +1,17 @@
-def add_full_name_alternatives_per_person(pipeline, input_table_name="df"):
+def add_full_name_alternatives_per_person(
+    pipeline, output_table_name, input_table_name="df"
+):
 
     # Ensure humanAltLabel is a (potentially empty) array
     sql = f"""
     select
         *,
         case when
-            humanAltLabel[1] is null then []
+            array_length(humanAltLabel) = 0 then []
             else str_split(humanAltLabel[1], ', ')
         end as humanAltLabel_fix,
         case when
-            pseudonym[1] is null then []
+            array_length(pseudonym) = 0 then []
             else str_split(pseudonym[1], ', ')
         end as pseudonym_fix,
 
@@ -22,7 +24,7 @@ def add_full_name_alternatives_per_person(pipeline, input_table_name="df"):
     sql = """
     select
         * EXCLUDE (humanAltLabel_fix, pseudonym_fix),
-        list_concat(humanLabel,  humanAltLabel_fix, pseudonym_fix) as full_name_arr
+        list_concat(list_concat(humanLabel,  humanAltLabel_fix), pseudonym_fix) as full_name_arr
     from rel_human_alt_label_array_fixed
     """
 
@@ -73,6 +75,6 @@ def add_full_name_alternatives_per_person(pipeline, input_table_name="df"):
     from all_names_in_list
     """
 
-    pipeline.enqueue_sql(sql, "distinct_human_label_list")
+    pipeline.enqueue_sql(sql, output_table_name)
 
     return pipeline

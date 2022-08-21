@@ -20,7 +20,7 @@ def days_in_month(year, month):
     return date_list
 
 
-for year in range(2000, 1800, -1):
+for year in range(2000, 1600, -1):
     for month in range(12, 0, -1):
         date_list = days_in_month(year, month)
         filename = persons_by_dob_raw_filename(year, month)

@@ -15,12 +15,7 @@ from transform_master_data.pipeline import SQLPipeline
 
 from transform_master_data.parse_point import parse_point_to_lat_lng
 
-# Add columns to `raw_scraped_one_row_per_person.parquet` like `full_name_arr`
-# That contains an array of distinct alternative full names
-
-
 Path(TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON).mkdir(parents=True, exist_ok=True)
-
 
 con = duckdb.connect()
 pipeline = SQLPipeline(con)
@@ -28,21 +23,32 @@ pipeline = SQLPipeline(con)
 sql = f"""
 select *
 from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
-limit 1000
+where array_length(birth_coordinates) > 0
+limit 10
 """
 
 pipeline.enqueue_sql(sql, "df")
 
-pipeline = add_full_name_alternatives_per_person(pipeline, "df")
-
-pipeline = parse_point_to_lat_lng(pipeline, "birth_coordinates", "df_bc_fixed")
-pipeline = parse_point_to_lat_lng(
-    pipeline, "residence_coordinates", "df_rc_fixed", input_df_name="df_bc_fixed"
+pipeline = add_full_name_alternatives_per_person(
+    pipeline, output_table_name="df_full_names", input_table_name="df"
 )
-pipeline.execute_pipeline().df()
+
+pipeline = parse_point_to_lat_lng(
+    pipeline,
+    "birth_coordinates",
+    output_table_name="df_bc_fixed",
+    input_table_name="df_full_names",
+)
+pipeline = parse_point_to_lat_lng(
+    pipeline,
+    "residence_coordinates",
+    output_table_name="df_rc_fixed",
+    input_table_name="df_bc_fixed",
+)
 
 
 df = pipeline.execute_pipeline()
+
 
 out_path = os.path.join(
     TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"

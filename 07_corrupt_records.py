@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 
@@ -37,6 +38,10 @@ from corrupt.corrupt_date import (
     date_corrupt_typo,
     date_gen_uncorrupted_record,
 )
+
+from path_fns.filepaths import TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON
+
+from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_distance
 
 from functools import partial
 from corrupt.geco_corrupt import get_zipf_dist
@@ -120,14 +125,43 @@ config = [
         "start_prob_null": 0.0,
         "end_prob_null": 0.0,
     },
+    {
+        "col_name": "birth_coordinates",
+        "format_master_data": master_record_no_op,
+        "gen_uncorrupted_record": partial(
+            lat_lng_uncorrupted_record,
+            input_colname="birth_coordinates",
+            output_colname="birth_coordinates",
+        ),
+        "corruption_functions": [
+            {
+                "fn": partial(
+                    lat_lng_corrupt_distance,
+                    input_colname="birth_coordinates",
+                    output_colname="birth_coordinates",
+                ),
+                "p": 1.0,
+            }
+        ],
+        "null_function": basic_null_fn("birth_coordinates"),
+        "start_prob_corrupt": 1.0,
+        "end_prob_corrupt": 1.0,
+        "start_prob_null": 0.0,
+        "end_prob_null": 0.0,
+    },
 ]
 
 
 con = duckdb.connect()
 
-sql = """
+in_path = os.path.join(
+    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
+)
+
+
+sql = f"""
 select *
-from 'out_data/wikidata/transformed_master_data/one_row_per_person/transformed_master_data.parquet'
+from '{in_path}'
 limit 500
 """
 
@@ -140,8 +174,6 @@ max_corrupted_records = 20
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
 records = raw_data.to_dict(orient="records")
-
-records[0]
 
 
 corrupted_records = []
@@ -187,6 +219,3 @@ ids = list(df["id"].unique())
 ids = np.random.choice(ids, 3, replace=False)
 f = df["id"].isin(ids)
 df[f][select]
-
-
-## TODO:  change argument corrupted reocrd  to just 'in record'
