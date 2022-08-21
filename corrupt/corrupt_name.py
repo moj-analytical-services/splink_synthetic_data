@@ -35,7 +35,6 @@ def full_name_alternative(formatted_master_record, record_to_modify={}):
         record_to_modify["full_name"] = options[0]
     else:
         record_to_modify["full_name"] = np.random.choice(options).lower()
-        record_to_modify["num_name_corruptions"] += 1
     return record_to_modify
 
 
@@ -63,13 +62,13 @@ def each_name_alternatives(formatted_master_record, record_to_modify={}):
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            record_to_modify["num_name_corruptions"] += 1
+
         elif n in family_name_alt_lookup:
             name_dict = family_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
             output_names.append(np.random.choice(alt_names, p=weights))
-            record_to_modify["num_name_corruptions"] += 1
+
         else:
             output_names.append(n)
 
@@ -92,10 +91,8 @@ def full_name_typo(formatted_master_record, record_to_modify={}):
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
     )
 
-    if record_to_modify["num_name_corruptions"] == 0:
+    record_to_modify["full_name"] = querty_corruptor.corrupt_value(full_name)
 
-        record_to_modify["full_name"] = querty_corruptor.corrupt_value(full_name)
-    record_to_modify["num_name_corruptions"] += 1
     return record_to_modify
 
 

@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 
 import duckdb
-from corrupt.corrupt_string import string_corrupt_numpad
 
+from corrupt.corrupt_string import string_corrupt_numpad
 
 from corrupt.corruption_functions import (
     master_record_no_op,
@@ -12,6 +12,7 @@ from corrupt.corruption_functions import (
     format_master_data,
     generate_uncorrupted_output_record,
     generate_corrupted_output_records,
+    format_master_record_first_array_item,
 )
 
 
@@ -53,20 +54,10 @@ from corrupt.geco_corrupt import get_zipf_dist
 # family name etc to output full_name
 
 # Guide to keys:
-# format_master_data.  A function that take the input master data - usually an array -
-# and returns a single value.
-# 'no_op' means no operation, i.e. reproduce the value from the master data.
+# format_master_data.  This functino may apply additional cleaning to the master
+# record.  The same formatted master ata is then available to the
+# 'gen_uncorrupted_record' and 'corruption_functions'
 
-# We then have an 'exact match' function, which controls how to render the master data
-# into the output data.
-
-# For instance, the master data for birth_place may use the person's birth place if it
-# exists, but if it doesn't, may use a known place they lived.
-
-# We then have a dictionary of 'corruption' functions, each with a probability (p) of
-# being applied.
-# This probability is conditional on the record being selected for corruption e.g. add
-# a typo with probability 0.5, or alternatively use an alias with probability 0.5
 
 # Finally, as we generate more duplicate records, we introduce more and more errors.
 # The keys start_prob_corrupt, end_prob_corrupt, start_prob_null, end_prob_null control
@@ -101,7 +92,9 @@ config = [
     },
     {
         "col_name": "dob",
-        "format_master_data": dob_format_master_record,
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="dob"
+        ),
         "gen_uncorrupted_record": partial(
             date_gen_uncorrupted_record, input_colname="dob", output_colname="dob"
         ),
@@ -127,7 +120,9 @@ config = [
     },
     {
         "col_name": "birth_coordinates",
-        "format_master_data": master_record_no_op,
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="birth_coordinates"
+        ),
         "gen_uncorrupted_record": partial(
             lat_lng_uncorrupted_record,
             input_colname="birth_coordinates",
@@ -139,9 +134,11 @@ config = [
                     lat_lng_corrupt_distance,
                     input_colname="birth_coordinates",
                     output_colname="birth_coordinates",
+                    distance_min=0.1,
+                    distance_max=10,
                 ),
                 "p": 1.0,
-            }
+            },
         ],
         "null_function": basic_null_fn("birth_coordinates"),
         "start_prob_corrupt": 1.0,
@@ -205,17 +202,5 @@ for i, master_input_record in enumerate(records):
         output_records.append(corrupted_output_record)
 
 df = pd.DataFrame(output_records)
-cols = list(df.columns)
 
-
-# Remove columns for final output
-
-num_cols = [c for c in cols if c.startswith("num_")]
-other_cols = [c for c in cols if not c.startswith("num_") and c != "uncorrupted_record"]
-
-select = other_cols + ["uncorrupted_record"] + num_cols
-
-ids = list(df["id"].unique())
-ids = np.random.choice(ids, 3, replace=False)
-f = df["id"].isin(ids)
-df[f][select]
+df.head(20)

@@ -33,17 +33,6 @@ def scale_linear(domain, range):
     return scale_function
 
 
-def initiate_counters(record):
-    record["num_corruptions"] = 0
-    record["num_name_corruptions"] = 0
-    record["num_location_corruptions"] = 0
-    record["num_birth_place_corruptions"] = 0
-    record["num_dob_corruptions"] = 0
-    record["num_occupation_corruptions"] = 0
-    record["num_gender_corruptions"] = 0
-    return record
-
-
 def format_master_data(master_input_record, config):
     for c in config:
         fn = c["format_master_data"]
@@ -54,15 +43,16 @@ def format_master_data(master_input_record, config):
 def generate_uncorrupted_output_record(formatted_master_record, config):
 
     uncorrupted_record = {"uncorrupted_record": True}
-    uncorrupted_record = initiate_counters(uncorrupted_record)
 
-    uncorrupted_record["id"] = formatted_master_record["human"]
+    uncorrupted_record["cluster"] = formatted_master_record["human"]
 
     for c in config:
         fn = c["gen_uncorrupted_record"]
         uncorrupted_record = fn(
             formatted_master_record, record_to_modify=uncorrupted_record
         )
+
+    uncorrupted_record["id"] = formatted_master_record["human"] + "_0"
 
     return uncorrupted_record
 
@@ -97,12 +87,11 @@ def generate_corrupted_output_records(
 ):
 
     corrupted_record = {
-        "num_corruptions": 0,
         "uncorrupted_record": False,
     }
 
-    corrupted_record = initiate_counters(corrupted_record)
-    corrupted_record["id"] = formatted_master_record["human"]
+    corrupted_record["cluster"] = formatted_master_record["human"]
+    corrupted_record["id"] = formatted_master_record["human"] + f"_{counter+1}"
 
     for c in config:
 
@@ -134,3 +123,11 @@ def generate_corrupted_output_records(
             )
 
     return corrupted_record
+
+
+def format_master_record_first_array_item(master_input_record, colname):
+    if not master_input_record[colname]:
+        master_input_record[colname] = None
+    else:
+        master_input_record[colname] = master_input_record[colname][0]
+    return master_input_record

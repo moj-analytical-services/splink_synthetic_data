@@ -2,7 +2,7 @@ import numpy as np
 
 
 def occupation_format_master_record(master_input_record):
-    if master_input_record["occupationLabel"][0] is None:
+    if not master_input_record["occupationLabel"]:
         master_input_record["_list_occupations"] = None
     else:
         master_input_record["_list_occupations"] = master_input_record[
@@ -29,5 +29,5 @@ def occupation_corrupt(formatted_master_record, record_to_modify={}):
         record_to_modify["occupation"] = options[0]
     else:
         record_to_modify["occupation"] = np.random.choice(list(options))
-        record_to_modify["num_occupation_corruptions"] += 1
+
     return record_to_modify

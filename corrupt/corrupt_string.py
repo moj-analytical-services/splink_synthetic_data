@@ -25,8 +25,7 @@ def string_corrupt_numpad(
     record_to_modify[output_colname] = numpad_corruptor.corrupt_value(
         input_value_as_str
     )
-    if record_to_modify[output_colname] != input_value_as_str:
-        record_to_modify["num_" + output_colname + "_corruptions"] += 1
+
     return record_to_modify
 
 
@@ -52,6 +51,5 @@ def string_corrupt_querty_keyboard(
     record_to_modify[output_colname] = querty_corruptor.corrupt_value(
         input_value_as_str
     )
-    if record_to_modify[output_colname] != input_value_as_str:
-        record_to_modify["num_" + output_colname + "_corruptions"] += 1
+
     return record_to_modify

@@ -29,7 +29,7 @@ def parse_point_to_lat_lng(
     sql = f"""
     select
         * exclude ({colname_to_replace}),
-        list_transform({colname_to_replace}, x -> struct_pack(lat :=x[2], lng:=x[1]))
+        list_transform({colname_to_replace}, x -> struct_pack(lat :=try_cast(x[2] as double), lng:=try_cast(x[1] as double)))
             as {colname_to_replace}
     from {intermediate_df_name_2}
     """

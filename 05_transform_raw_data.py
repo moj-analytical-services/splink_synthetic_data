@@ -20,11 +20,11 @@ Path(TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON).mkdir(parents=True, exist_ok=Tr
 con = duckdb.connect()
 pipeline = SQLPipeline(con)
 
+# where array_length(birth_coordinates) > 0
 sql = f"""
 select *
 from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
-where array_length(birth_coordinates) > 0
-limit 10
+limit 20
 """
 
 pipeline.enqueue_sql(sql, "df")

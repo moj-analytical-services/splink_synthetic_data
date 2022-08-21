@@ -31,8 +31,7 @@ def date_corrupt_typo(
     dob_ex_year = input_value_as_str[2:]
     corrupted_dob_ex_year = numpad_corruptor.corrupt_value(dob_ex_year)
     record_to_modify[output_colname] = input_value_as_str[:2] + corrupted_dob_ex_year
-    if input_value_as_str != record_to_modify[output_colname]:
-        record_to_modify["num_dob_corruptions"] += 1
+
     return record_to_modify
 
 
@@ -54,8 +53,6 @@ def date_corrupt_timedelta(
         delta = timedelta(days=random.randint(-61, 61))
     elif choice == "large":
         delta = timedelta(days=random.randint(1000, 1000))
-
-    record_to_modify["num_dob_corruptions"] += 1
 
     input_value = input_value + delta
     record_to_modify[output_colname] = str(input_value)
