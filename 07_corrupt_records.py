@@ -120,9 +120,7 @@ config = [
     },
     {
         "col_name": "birth_coordinates",
-        "format_master_data": partial(
-            format_master_record_first_array_item, colname="birth_coordinates"
-        ),
+        "format_master_data": master_record_no_op,
         "gen_uncorrupted_record": partial(
             lat_lng_uncorrupted_record,
             input_colname="birth_coordinates",
@@ -141,6 +139,32 @@ config = [
             },
         ],
         "null_function": basic_null_fn("birth_coordinates"),
+        "start_prob_corrupt": 1.0,
+        "end_prob_corrupt": 1.0,
+        "start_prob_null": 0.0,
+        "end_prob_null": 0.0,
+    },
+    {
+        "col_name": "residence_coordinates",
+        "format_master_data": master_record_no_op,
+        "gen_uncorrupted_record": partial(
+            lat_lng_uncorrupted_record,
+            input_colname="residence_coordinates",
+            output_colname="residence_coordinates",
+        ),
+        "corruption_functions": [
+            {
+                "fn": partial(
+                    lat_lng_corrupt_distance,
+                    input_colname="residence_coordinates",
+                    output_colname="residence_coordinates",
+                    distance_min=0.1,
+                    distance_max=10,
+                ),
+                "p": 1.0,
+            },
+        ],
+        "null_function": basic_null_fn("residence_coordinates"),
         "start_prob_corrupt": 1.0,
         "end_prob_corrupt": 1.0,
         "start_prob_null": 0.0,
@@ -167,7 +191,7 @@ raw_data = con.execute(sql).df()
 raw_data
 
 
-max_corrupted_records = 20
+max_corrupted_records = 3
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
 records = raw_data.to_dict(orient="records")

@@ -34,7 +34,7 @@ def lat_lng_corrupt_distance(
         record_to_modify[output_colname] = None
         return record_to_modify
     else:
-        geostruct = formatted_master_record[input_colname]
+        geostruct = formatted_master_record[input_colname][0]
         # Chisquare 3 runs between 0 and about 10
         chi = chisquare(3, 1)
         multiplier = (distance_max - distance_min) / 10
@@ -47,5 +47,8 @@ def lat_lng_corrupt_distance(
 def lat_lng_uncorrupted_record(
     formatted_master_record, input_colname, output_colname, record_to_modify={}
 ):
-    record_to_modify[output_colname] = str(formatted_master_record[input_colname])
+    if not formatted_master_record[input_colname]:
+        record_to_modify[output_colname] = None
+    else:
+        record_to_modify[output_colname] = formatted_master_record[input_colname][0]
     return record_to_modify
