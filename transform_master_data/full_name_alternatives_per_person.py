@@ -1,10 +1,4 @@
-from path_fns.filepaths import PERSONS_PROCESSED_ONE_ROW_PER_PERSON
-
-
-def add_full_name_alternatives_per_person(
-    pipeline,
-    one_row_per_person_tablename=f"'{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'",
-):
+def add_full_name_alternatives_per_person(pipeline, input_table_name="df"):
 
     # Ensure humanAltLabel is a (potentially empty) array
     sql = f"""
@@ -19,7 +13,7 @@ def add_full_name_alternatives_per_person(
             else str_split(pseudonym[1], ', ')
         end as pseudonym_fix,
 
-    from {one_row_per_person_tablename}
+    from {input_table_name}
     """
 
     pipeline.enqueue_sql(sql, "rel_human_alt_label_array_fixed")
@@ -38,19 +32,21 @@ def add_full_name_alternatives_per_person(
     sql = """
     select
         * EXCLUDE (full_name_arr),
-        array_filter(full_name_arr, x -> (not regexp_matches(x, '^Q\d+$'))) as full_name_arr,
+        array_filter(full_name_arr, x -> (not regexp_matches(x, '^Q\d+$')))
+            as full_name_arr,
     from rel_human_labels_as_array
     """
 
     pipeline.enqueue_sql(sql, "rel_human_labels_as_array_filtered_qnumbers")
 
-    # Use given name and family name to crate a name string e.g. given_name [John, James]
+    # Use given name and family name to crate a name string e.g. given_name [John,James]
     # and family name [Smith]
     # become a single string "John James Smith"
     sql = """
     select
         *,
-        replace(list_string_agg(list_concat(given_nameLabel, family_nameLabel)), ',', ' ')
+        replace(list_string_agg(list_concat(given_nameLabel, family_nameLabel)),
+                ',', ' ')
             as family_give_name_concat,
 
     from rel_human_labels_as_array_filtered_qnumbers
@@ -62,7 +58,8 @@ def add_full_name_alternatives_per_person(
     sql = """
     select
         * EXCLUDE (full_name_arr, family_give_name_concat),
-        list_concat(full_name_arr,  list_value(family_give_name_concat)) as full_name_arr,
+        list_concat(full_name_arr,  list_value(family_give_name_concat))
+            as full_name_arr,
     from concatenated_given_family_names
     """
 
