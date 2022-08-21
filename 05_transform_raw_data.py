@@ -28,7 +28,7 @@ pipeline = SQLPipeline(con)
 sql = f"""
 select *
 from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
-limit 20 offset 20
+limit 1000
 """
 
 pipeline.enqueue_sql(sql, "df")
@@ -43,10 +43,10 @@ pipeline.execute_pipeline().df()
 
 
 df = pipeline.execute_pipeline()
-df.df()
-# out_path = os.path.join(
-#     TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
-# )
 
-# df_arrow = df.fetch_arrow_table()
-# pq.write_table(df_arrow, out_path)
+out_path = os.path.join(
+    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
+)
+
+df_arrow = df.fetch_arrow_table()
+pq.write_table(df_arrow, out_path)
