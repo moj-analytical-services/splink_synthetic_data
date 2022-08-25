@@ -1,4 +1,8 @@
 import os
+
+import logging
+
+
 import pandas as pd
 import numpy as np
 
@@ -32,7 +36,6 @@ from corrupt.corrupt_name import (
 
 from corrupt.corrupt_date import (
     date_corrupt_timedelta,
-    date_corrupt_typo,
     date_gen_uncorrupted_record,
 )
 
@@ -45,6 +48,11 @@ from corrupt.geco_corrupt import get_zipf_dist
 
 from corrupt.error_vector import generate_error_vectors, apply_error_vector
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format="%(message)s",
+)
+logger.setLevel(logging.INFO)
 
 # Configure how corruptions will be made for each field
 
@@ -201,6 +209,7 @@ for i, master_input_record in enumerate(records):
 
     # Apply corruptions
     for vector in error_vectors:
+        logger.info(f"Error vector: {vector=}")
         corrupted_record = apply_error_vector(vector, formatted_master_record, config)
         output_records.append(corrupted_record)
 
