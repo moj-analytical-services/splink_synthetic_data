@@ -1,4 +1,8 @@
 import os
+
+import logging
+
+
 import pandas as pd
 import numpy as np
 
@@ -11,7 +15,6 @@ from corrupt.corruption_functions import (
     basic_null_fn,
     format_master_data,
     generate_uncorrupted_output_record,
-    generate_corrupted_output_records,
     format_master_record_first_array_item,
 )
 
@@ -30,13 +33,9 @@ from corrupt.corrupt_name import (
     full_name_null,
 )
 
-from corrupt.corrupt_dob import (
-    dob_format_master_record,
-)
 
 from corrupt.corrupt_date import (
     date_corrupt_timedelta,
-    date_corrupt_typo,
     date_gen_uncorrupted_record,
 )
 
@@ -47,6 +46,13 @@ from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_
 from functools import partial
 from corrupt.geco_corrupt import get_zipf_dist
 
+from corrupt.error_vector import generate_error_vectors, apply_error_vector
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format="%(message)s",
+)
+logger.setLevel(logging.INFO)
 
 # Configure how corruptions will be made for each field
 
@@ -74,10 +80,6 @@ config = [
             {"fn": full_name_typo, "p": 0.1},
         ],
         "null_function": full_name_null,
-        "start_prob_corrupt": 0.1,
-        "end_prob_corrupt": 0.6,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.5,
     },
     {
         "col_name": "occupation",
@@ -85,10 +87,6 @@ config = [
         "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
         "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
         "null_function": basic_null_fn("occupation"),
-        "start_prob_corrupt": 0.1,
-        "end_prob_corrupt": 0.7,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.5,
     },
     {
         "col_name": "dob",
@@ -113,10 +111,6 @@ config = [
             },
         ],
         "null_function": basic_null_fn("dob"),
-        "start_prob_corrupt": 1.0,
-        "end_prob_corrupt": 1.0,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.0,
     },
     {
         "col_name": "birth_coordinates",
@@ -139,10 +133,6 @@ config = [
             },
         ],
         "null_function": basic_null_fn("birth_coordinates"),
-        "start_prob_corrupt": 1.0,
-        "end_prob_corrupt": 1.0,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.0,
     },
     {
         "col_name": "residence_coordinates",
@@ -165,10 +155,6 @@ config = [
             },
         ],
         "null_function": basic_null_fn("residence_coordinates"),
-        "start_prob_corrupt": 1.0,
-        "end_prob_corrupt": 1.0,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.0,
     },
 ]
 
@@ -183,7 +169,7 @@ in_path = os.path.join(
 sql = f"""
 select *
 from '{in_path}'
-limit 500
+limit 5
 """
 
 pd.options.display.max_columns = 1000
@@ -212,18 +198,21 @@ for i, master_input_record in enumerate(records):
     )
 
     output_records.append(uncorrupted_output_record)
+
+    # How many corrupted records to generate
     total_num_corrupted_records = np.random.choice(
         zipf_dist["vals"], p=zipf_dist["weights"]
     )
 
-    for counter in range(total_num_corrupted_records):
-        corrupted_output_record = generate_corrupted_output_records(
-            formatted_master_record,
-            counter,
-            total_num_corrupted_records,
-            config,
-        )
-        output_records.append(corrupted_output_record)
+    # Decide what types of corruptions to introduce
+    error_vectors = generate_error_vectors(config, total_num_corrupted_records)
+
+    # Apply corruptions
+    for vector in error_vectors:
+        logger.info(f"Error vector: {vector=}")
+        corrupted_record = apply_error_vector(vector, formatted_master_record, config)
+        output_records.append(corrupted_record)
+
 
 df = pd.DataFrame(output_records)
 
