@@ -26,7 +26,10 @@ con.register("alt_names_given", alt_names_given)
 
 
 weighted_lookup_given_name = get_name_weighted_lookup(
-    con, "given_nameLabel", "alt_names_given", PERSONS_PROCESSED_ONE_ROW_PER_PERSON
+    con,
+    "given_nameLabel",
+    "alt_names_given",
+    f"'{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'",
 )
 weighted_lookup_given_name = weighted_lookup_given_name.fetch_arrow_table()
 
@@ -37,7 +40,10 @@ pq.write_table(weighted_lookup_given_name, NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP
 alt_names_family = pq.read_table(NAMES_RAW_OUT_PATH_FAMILY_NAME)
 con.register("alt_names_family", alt_names_family)
 weighted_lookup_family_name = get_name_weighted_lookup(
-    con, "family_nameLabel", "alt_names_family", PERSONS_PROCESSED_ONE_ROW_PER_PERSON
+    con,
+    "family_nameLabel",
+    "alt_names_family",
+    f"'{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'",
 )
 weighted_lookup_family_name = weighted_lookup_family_name.fetch_arrow_table()
 
