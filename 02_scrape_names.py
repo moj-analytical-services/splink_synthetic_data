@@ -125,7 +125,7 @@ for page in range(0, 100, 1):
 diminutives = get_diminutives()
 path = os.path.join(
     NAMES_RAW_OUT_PATH_GIVEN_NAME,
-    "diminutives.parquet",
+    "scraped_diminutives.parquet",
 )
 diminutives.to_parquet(
     path,
