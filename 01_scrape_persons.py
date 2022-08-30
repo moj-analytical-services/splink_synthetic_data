@@ -49,13 +49,13 @@ for year in range(2000, 1700, -1):
 # Few records - output in groups of 1 year
 for year in range(1700, -2000, -1):
     print(f"Starting year {year}")
-    dfs = []
+
     filename = persons_by_dob_raw_filename_full_year(year)
     if not os.path.exists(filename):
+        dfs = []
+        start_time = time.time()
         for month in range(12, 0, -1):
             date_list = days_in_month(year, month)
-
-            start_time = time.time()
 
             for this_date in date_list:
                 print(f"Scraping date {this_date}")
@@ -64,9 +64,9 @@ for year in range(1700, -2000, -1):
                 if len(df) > 0:
                     dfs.append(df)
 
-    df = pd.concat(dfs)
-    df.to_parquet(filename)
+        df = pd.concat(dfs)
+        df.to_parquet(filename)
 
-    end_time = time.time()
+        end_time = time.time()
 
     print(f"Time taken: {end_time - start_time}")
