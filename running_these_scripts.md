@@ -65,11 +65,49 @@ The weights are based on the frequency of the name in the overall scraped datase
 
 This script takes the data in `out_data/wikidata/transformed_master_data/one_row_per_person` and created duplicate records, introducing errors of various types.
 
-The script uses a config, which specifies, for each output column:
+Here's an example of the raw input data - in which every value is a list of possible values:
 
-- How to format the input record into an uncorrupted output record
-- One or more corruptions to apply to that column
-- Associated probability distributions
+|     | human    | dod                          | family_name   | dob                          | given_name  | country_citizen | occupation                             | humanLabel         | given_nameLabel | family_nameLabel | occupationLabel                       | country_citizenLabel | sex_or_genderLabel | place_birth | birth_country | place_birthLabel | birth_countryLabel | birth_name | humanDescription                                       | name_native_language | humanAltLabel                                                                                      | residence                                             | residenceLabel                                                          | residence_countryLabel           | pseudonym | ethnicity | ethnicityLabel | full_name_arr                                                                                                              | birth_coordinates                           | residence_coordinates                                                                                                                                                                                                                                                |
+| --: | :------- | :--------------------------- | :------------ | :--------------------------- | :---------- | :-------------- | :------------------------------------- | :----------------- | :-------------- | :--------------- | :------------------------------------ | :------------------- | :----------------- | :---------- | :------------ | :--------------- | :----------------- | :--------- | :----------------------------------------------------- | :------------------- | :------------------------------------------------------------------------------------------------- | :---------------------------------------------------- | :---------------------------------------------------------------------- | :------------------------------- | :-------- | :-------- | :------------- | :------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|   0 | Q2223137 | [datetime.date(1877, 12, 7)] | ['Q37099465'] | [datetime.date(1816, 3, 22)] | ['Q595105'] | ['Q142']        | ['Q22813352', 'Q11569986', 'Q1028181'] | ['Ernest Charton'] | ['Ernest']      | ['Charton']      | ['traveler', 'printmaker', 'painter'] | ['France']           | ['male']           | ['Q456']    | ['Q142']      | ['Lyon']         | ['France']         | []         | ['French painter active in South America (1816-1877)'] | []                   | ['e. charton, Ernest Charton de Treville, Ernest Marc Jules Charton de Treville, Ernesto Charton'] | ['Q90', 'Q456', 'Q1486', 'Q2887', 'Q33986', 'Q42810'] | ['Paris', 'Lyon', 'Buenos Aires', 'Santiago', 'Valparaíso', 'Le Havre'] | ['France', 'Argentina', 'Chile'] | []        | []        | []             | ['Ernesto Charton', 'Ernest Marc Jules Charton de Treville', 'Ernest Charton de Treville', 'e. charton', 'Ernest Charton'] | [{'lat': 45.758888888, 'lng': 4.841388888}] | [{'lat': 48.856944444, 'lng': 2.351388888}, {'lat': 45.758888888, 'lng': 4.841388888}, {'lat': -34.599722222, 'lng': -58.381944444}, {'lat': -33.45, 'lng': -70.666666666}, {'lat': -33.046111111, 'lng': -71.619722222}, {'lat': 49.494166666, 'lng': 0.108055555}] |
+
+This data is then converted into:
+
+- A single uncorrupted output record
+- One or more corrupted output records
+
+using the following process:
+
+```mermaid
+graph TD
+    Z[Single record from raw input data]
+    A[Add columns to formatted master record dict]
+    B[Add column to uncorrupted output record]
+    BB[Append final uncorrupted output record to outputs]
+    EV[Generate one or more error vectors, then for each error vector]
+    C[Add column to corrupted output record]
+    CC[Append final corrupted output record to outputs]
+    E[Output corrupted and uncorrupted records to final corrupted dataset]
+    Z --> |Formatted master record dict is initialised as the raw input data, as a dict|A
+    A --> |For each output column in config|A
+    B --> |For each output column in config|B
+    C --> |For each output column in config|C
+    A --> |Initialise blank uncorrupted record dict|B
+    A --> EV
+    EV --> |Initialise blank corrupted record dict|C
+    C --> CC
+    CC --> E
+    B --> BB
+    BB --> E
+
+```
+
+The script uses a config, which specifies, _**for each output column**_:
+
+- `format_master_data`: Any transforms to apply to the raw input data to clean it up and make it easier to process. For example, some arrays like date of birth should only have one element, so we might want to take the first element.
+- `gen_uncorrupted_record`: How to turn the formatted master data into an uncorrupted output record
+- `corruption_functions`: A list of functions that apply corruptions of various types to the `formatted_master_data`
+- `null_function`: A function that describes how to null out (partially or completely) the output record
 
 The config is a list of dictionaries. An example of an element, which produces an output occupation column could look like this:
 
@@ -80,27 +118,16 @@ The config is a list of dictionaries. An example of an element, which produces a
         "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
         "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
         "null_function": basic_null_fn("occupation"),
-        "start_prob_corrupt": 0.1,
-        "end_prob_corrupt": 0.7,
-        "start_prob_null": 0.0,
-        "end_prob_null": 0.5,
+
     },
 ```
 
-This example will be used below to describe how it works.
-
-A rough sketch of the algorithm is as follows.
-
-- Take each input record (person) and convert the record into a dictionary called `formatted_master_record`
+This example will be used below to provide more detail how it works.
 
 For each item in the config
 
 - Apply the function provided at `format_master_data` and apply the function provided `format_master_data()`. This is sometimes needed to further prepare input data into something easy to corrupt. In our example, the function `occupation_format_master_record` is called.
 
-- Create an uncorrupted output record using the function provided at `gen_uncorrupted_record`, in our case `occupation_gen_uncorrupted_record`. This will often selects the 'best' item from the list of alternatives. It's main use is to turn the input data, which is often a list, into a single value
+- Create an uncorrupted output record using the function provided at `gen_uncorrupted_record`, in our case `occupation_gen_uncorrupted_record`. Another good example is if we want to pick the 'best' name for a person out of a series of alternatives.
 
-- Create a series of corrupted records, using one or more corruption functions provided at the key `corruption_functions`. In this example it's a single function: `[{"fn": occupation_corrupt, "p": 1.0}],` but more could be provided. `p` should sum to 1.
-
-- With some probability, apply the function at the `null_function` key. Here we use a generic function `basic_null_fn` that results in null with some probability. A more sophisticated function could null out only parts of the information e.g. a middle name from a full name field.
-
-- The remaining keys `start_prob_corrupt`,`end_prob_corrupt`,`start_prob_null`,`end_prob_null` control the probability with which corruptions are applied. A linear interpolation is used such that these probabilities increase for each additional corrupted record generated for an individual.
+- Create a series of corrupted records, using one or more corruption functions provided at the key `corruption_functions` and the `null_function`.

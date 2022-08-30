@@ -54,6 +54,24 @@ logging.basicConfig(
 )
 logger.setLevel(logging.INFO)
 
+
+con = duckdb.connect()
+
+in_path = os.path.join(
+    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
+)
+
+
+sql = f"""
+select *
+from '{in_path}'
+limit 5
+"""
+
+pd.options.display.max_columns = 1000
+raw_data = con.execute(sql).df()
+raw_data
+
 # Configure how corruptions will be made for each field
 
 # Col name is the OUTPUT column name.  For instance, we may input given name,
@@ -157,24 +175,6 @@ config = [
         "null_function": basic_null_fn("residence_coordinates"),
     },
 ]
-
-
-con = duckdb.connect()
-
-in_path = os.path.join(
-    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
-)
-
-
-sql = f"""
-select *
-from '{in_path}'
-limit 5
-"""
-
-pd.options.display.max_columns = 1000
-raw_data = con.execute(sql).df()
-raw_data
 
 
 max_corrupted_records = 3
