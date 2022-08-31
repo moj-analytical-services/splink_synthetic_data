@@ -39,6 +39,12 @@ from corrupt.corrupt_date import (
     date_gen_uncorrupted_record,
 )
 
+from corrupt.corrupt_country_citizenship import (
+    country_citizenship_format_master_record,
+    country_citizenship_corrupt,
+    country_citizenship_gen_uncorrupted_record,
+)
+
 from path_fns.filepaths import TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON
 
 from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_distance
@@ -173,6 +179,13 @@ config = [
             },
         ],
         "null_function": basic_null_fn("residence_coordinates"),
+    },
+    {
+        "col_name": "country_citizenLabel",
+        "format_master_data": country_citizenship_format_master_record,
+        "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
+        "corruption_functions": [{"fn": country_citizenship_corrupt, "p": 1.0}],
+        "null_function": basic_null_fn("country_citizenship"),
     },
 ]
 
