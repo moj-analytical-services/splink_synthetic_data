@@ -25,12 +25,15 @@ def persons_by_dob_raw_filename_full_year(year):
 
 # Processed
 PROCESSED = "processed"
-PERSONS_PROCESSED_ONE_ROW_PER_PERSON = os.path.join(
+PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR = os.path.join(
     OUT_BASE,
     WIKIDATA,
     PROCESSED,
-    "one_row_per_person",
-    "raw_scraped_one_row_per_person.parquet",
+    "one_row_per_person"
+)
+PERSONS_PROCESSED_ONE_ROW_PER_PERSON = os.path.join(
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR,
+    "raw_scraped_one_row_per_person.parquet"
 )
 
 NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP = os.path.join(

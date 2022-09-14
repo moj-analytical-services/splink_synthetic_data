@@ -2,14 +2,19 @@ import duckdb
 import pyarrow.parquet as pq
 
 from path_fns.filepaths import (
-    PERSONS_BY_DOB_RAW_OUT_PATH,
+    PERSONS_BY_DOD_RAW_OUT_PATH,
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR,
     PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
 )
+
+from pathlib import Path
+
+Path(PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR).mkdir(parents=True, exist_ok=True)
 
 # Using arrow to read because it performs schema merging
 # i.e. if some files are missing a column it doesn't matter
 # duckdb doesn't do this
-arrow_table = pq.read_table(PERSONS_BY_DOB_RAW_OUT_PATH)
+arrow_table = pq.read_table(PERSONS_BY_DOD_RAW_OUT_PATH)
 
 con = duckdb.connect(":memory:")
 con.register("df", arrow_table)
