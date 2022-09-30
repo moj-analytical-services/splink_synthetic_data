@@ -22,7 +22,7 @@ Path(NAMES_RAW_OUT_PATH_FAMILY_NAME).mkdir(parents=True, exist_ok=True)
 
 # %%
 
-# Scrape first name said to be the same as
+# Scrape given (first) name said to be the same as
 for page in range(0, 100, 1):
     pagesize = 5000
     path = os.path.join(
@@ -45,7 +45,7 @@ for page in range(0, 100, 1):
 # %%
 
 
-# Scrape first name said to be the same as
+# Scrape family name said to be the same as
 for page in range(0, 100, 1):
     pagesize = 5000
 

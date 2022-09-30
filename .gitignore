@@ -1,6 +1,7 @@
 geco/*
 poetry.lock
 
+*.pyc
 *.csv
 *.parquet
 *.db
