@@ -196,9 +196,6 @@ zipf_dist = get_zipf_dist(max_corrupted_records)
 records = raw_data.to_dict(orient="records")
 
 
-corrupted_records = []
-
-
 output_records = []
 for i, master_input_record in enumerate(records):
 
