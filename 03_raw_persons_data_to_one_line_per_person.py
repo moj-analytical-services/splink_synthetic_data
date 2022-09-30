@@ -9,7 +9,12 @@ pd.options.display.max_columns = 1000
 from path_fns.filepaths import (
     PERSONS_BY_DOD_RAW_OUT_PATH,
     PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR
 )
+
+from pathlib import Path
+
+Path(PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR).mkdir(parents=True, exist_ok=True)
 
 # Using arrow to read because this gives us explicit control over schema
 # Use schema from file we know is fully populated (cannot infer schema from
