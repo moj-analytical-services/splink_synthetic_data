@@ -1,22 +1,29 @@
+import os
+
 import duckdb
 import pyarrow.parquet as pq
+import pandas as pd
+
+pd.options.display.max_columns = 1000
 
 from path_fns.filepaths import (
     PERSONS_BY_DOD_RAW_OUT_PATH,
-    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR,
     PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR
 )
 
 from pathlib import Path
 
 Path(PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR).mkdir(parents=True, exist_ok=True)
 
-# Using arrow to read because it performs schema merging
-# i.e. if some files are missing a column it doesn't matter
-# duckdb doesn't do this
-arrow_table = pq.read_table(PERSONS_BY_DOD_RAW_OUT_PATH)
+# Using arrow to read because this gives us explicit control over schema
+# Use schema from file we know is fully populated (cannot infer schema from
+# some smaller parquet files)
+sch = pq.read_schema(os.path.join(PERSONS_BY_DOD_RAW_OUT_PATH, "dod_2020_12.parquet"))
+arrow_table = pq.read_table(PERSONS_BY_DOD_RAW_OUT_PATH, schema=sch)
 
-con = duckdb.connect(":memory:")
+
+con = duckdb.connect("myfile.duckdb")
 con.register("df", arrow_table)
 
 wikireplace = """replace({col}, 'http://www.wikidata.org/entity/', '') as {col}"""
@@ -133,18 +140,12 @@ TO '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}' (FORMAT 'parquet')
 con.execute(sql)
 
 
-import pandas as pd
-
-pd.options.display.max_columns = 1000
-
-display(
-    con.execute(
-        f"""
+sql = f"""
 select count(*)
 from '{PERSONS_PROCESSED_ONE_ROW_PER_PERSON}'
 """
-    ).df()
-)
+
+display(con.execute(sql).df())
 
 # USING SAMPLE 0.01% (bernoulli)
 con.execute(
