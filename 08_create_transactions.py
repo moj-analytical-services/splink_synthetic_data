@@ -28,7 +28,7 @@ and array_length(humanAltLabel) > 0
 and array_length(residence) > 0
 
 
-limit 10
+limit 3000
 """
 
 
@@ -78,7 +78,6 @@ def random_payment_reference():
 
 def random_payment_memo(raw_record):
 
-    ref = random_payment_reference()
     hl = raw_record["humanLabel"][0]
 
     new_parts = []
@@ -88,11 +87,11 @@ def random_payment_memo(raw_record):
         else:
             new_parts.append(part)
     person = " ".join(new_parts)
-    return f"{person} {ref}".strip().upper()
+    return f"{person}".strip().upper()
 
 
 def random_payment_type():
-    a = ["bank transfer", "cheque desposit", "cash credit", "wire"]
+    a = ["BGC", "CHQ", "CSH", "WRE"]
     return np.random.choice(a, p=[0.6, 0.2, 0.1, 0.1])
 
 
@@ -100,7 +99,7 @@ data_to_corrupt = []
 
 record_id = 0
 for person_record in records:
-    for i in range(np.random.randint(1, 3)):
+    for i in range(np.random.randint(1, 30)):
         this_record = {"unique_id": record_id}
         record_id += 1
         this_record["transaction_date"] = random_date("2022-01-01", "2022-05-10")
@@ -110,8 +109,12 @@ for person_record in records:
         this_record["exchange_rate_transaction"] = xr_realised
         this_record["amount"] = random_amount()
         this_record["memo"] = random_payment_memo(person_record)
+        this_record["ref"] = random_payment_reference()
+        this_record["type"] = random_payment_type()
+
         data_to_corrupt.append(this_record)
 master_data = pd.DataFrame(data_to_corrupt)
+master_data
 
 master_data_as_dict = master_data.to_dict(orient="records")
 
@@ -169,7 +172,7 @@ def date_corrupt_timedelta(
         delta = timedelta(days=random.randint(1, 21))
 
     input_value = input_value + delta
-    record_to_modify[output_colname] = str(input_value)
+    record_to_modify[output_colname] = input_value
     return record_to_modify
 
 
@@ -179,7 +182,7 @@ def amount_uncorrupted(formatted_master_record, record_to_modify={}):
         * formatted_master_record["exchange_rate_transaction"]
     )
     record_to_modify["amount"] = round(record_to_modify["amount"], 2)
-    record_to_modify["currency"] = formatted_master_record["currency"]
+
     return record_to_modify
 
 
@@ -189,11 +192,59 @@ def amount_corrupted(formatted_master_record, record_to_modify={}):
         * formatted_master_record["exchange_rate_average"]
     )
     record_to_modify["amount"] = round(record_to_modify["amount"], 2)
-    record_to_modify["currency"] = formatted_master_record["currency"]
+
+    return record_to_modify
+
+
+def memo_uncorrupt(formatted_master_record, record_to_modify={}):
+    memo = formatted_master_record["memo"]
+    ref = formatted_master_record["ref"]
+    type = formatted_master_record["type"]
+
+    if random.uniform(0, 1) < 0.9:
+        memo = f"{memo} {ref}"
+
+    if random.uniform(0, 1) < 0.9:
+        memo = f"{memo} {type}"
+
+    if random.uniform(0, 1) < 0.9:
+        memo = memo[:15]
+
+    record_to_modify["memo"] = memo
+    return record_to_modify
+
+
+def memo_corrupt(formatted_master_record, record_to_modify={}):
+    memo = formatted_master_record["memo"]
+    ref = formatted_master_record["ref"]
+    type = formatted_master_record["type"]
+
+    if random.uniform(0, 1) < 0.7:
+        memo = f"{memo} {ref}"
+
+    if random.uniform(0, 1) < 0.7:
+        memo = f"{memo} {type}"
+
+    if random.uniform(0, 1) < 0.7:
+        memo = memo[:15]
+
+    record_to_modify["memo"] = memo
     return record_to_modify
 
 
 config = [
+    {
+        "col_name": "memo",
+        "format_master_data": master_record_no_op,
+        "gen_uncorrupted_record": memo_uncorrupt,
+        "corruption_functions": [
+            {
+                "fn": memo_corrupt,
+                "p": 1.0,
+            },
+        ],
+        "null_function": partial(null_no_op, column="transaction_date"),
+    },
     {
         "col_name": "transaction_date",
         "format_master_data": master_record_no_op,
@@ -252,6 +303,21 @@ for i, master_input_record in enumerate(master_data_as_dict):
         corrupted_record["unique_id"] = formatted_master_record["unique_id"]
         output_records.append(corrupted_record)
 
-display(master_data)
+
 df = pd.DataFrame(output_records)
-df
+
+f1 = df["uncorrupted_record"] == True
+df_left = df[f1].copy()
+df_left = df_left.drop("uncorrupted_record", axis=1)
+df_left.to_parquet("transactions_left.parquet", index=False)
+df_left
+
+
+f2 = df["uncorrupted_record"] == False
+df_right = df[f2].copy()
+df_right = df_right.drop("uncorrupted_record", axis=1)
+df_right.to_parquet("transactions_right.parquet", index=False)
+df_right
+
+print(len(df_right))
+df_right
