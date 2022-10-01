@@ -1,6 +1,7 @@
 import random
 import numpy as np
 from datetime import timedelta
+from datetime import datetime
 
 from corrupt.geco_corrupt import (
     CorruptValueNumpad,
@@ -36,14 +37,14 @@ def date_corrupt_typo(
 
 
 def date_corrupt_timedelta(
-    formatted_master_record, input_colname, output_colname, record_to_modify={}
+    formatted_master_record, record_to_modify, input_colname, output_colname
 ):
 
-    if formatted_master_record[input_colname]:
-        record_to_modify[output_colname] = None
+    if not record_to_modify[input_colname]:
         return record_to_modify
 
-    input_value = formatted_master_record[input_colname]
+    input_value = record_to_modify[input_colname]
+    input_value = datetime.fromisoformat(input_value)
 
     choice = np.random.choice(["small", "medium", "large"], p=[0.7, 0.2, 0.1])
 
@@ -55,5 +56,19 @@ def date_corrupt_timedelta(
         delta = timedelta(days=random.randint(1000, 1000))
 
     input_value = input_value + delta
-    record_to_modify[output_colname] = str(input_value)
+    record_to_modify[output_colname] = str(input_value.date())
+
+    return record_to_modify
+
+
+def date_corrupt_jan_first(
+    formatted_master_record, record_to_modify, input_colname, output_colname
+):
+
+    if not record_to_modify[input_colname]:
+        return record_to_modify
+
+    input_value = record_to_modify[input_colname]
+    record_to_modify[output_colname] = str(input_value)[:4] + "-01-01"
+
     return record_to_modify

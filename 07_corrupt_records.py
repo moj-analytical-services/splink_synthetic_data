@@ -37,6 +37,7 @@ from corrupt.corrupt_name import (
 from corrupt.corrupt_date import (
     date_corrupt_timedelta,
     date_gen_uncorrupted_record,
+    date_corrupt_jan_first,
 )
 
 from corrupt.corrupt_country_citizenship import (
@@ -94,11 +95,11 @@ config = [
         "format_master_data": master_record_no_op,
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
     },
-    {
-        "col_name": "occupation",
-        "format_master_data": occupation_format_master_record,
-        "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
-    },
+    # {
+    #     "col_name": "occupation",
+    #     "format_master_data": occupation_format_master_record,
+    #     "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
+    # },
     {
         "col_name": "dob",
         "format_master_data": partial(
@@ -109,73 +110,69 @@ config = [
         ),
     },
     {
-        "col_name": "birth_coordinates",
-        "format_master_data": master_record_no_op,
+        "col_name": "dod",
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="dod"
+        ),
         "gen_uncorrupted_record": partial(
-            lat_lng_uncorrupted_record,
-            input_colname="birth_coordinates",
-            output_colname="birth_coordinates",
+            date_gen_uncorrupted_record, input_colname="dod", output_colname="dod"
         ),
     },
-    {
-        "col_name": "residence_coordinates",
-        "format_master_data": master_record_no_op,
-        "gen_uncorrupted_record": partial(
-            lat_lng_uncorrupted_record,
-            input_colname="residence_coordinates",
-            output_colname="residence_coordinates",
-        ),
-    },
-    {
-        "col_name": "country_citizenLabel",
-        "format_master_data": country_citizenship_format_master_record,
-        "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
-    },
+    # {
+    #     "col_name": "birth_coordinates",
+    #     "format_master_data": master_record_no_op,
+    #     "gen_uncorrupted_record": partial(
+    #         lat_lng_uncorrupted_record,
+    #         input_colname="birth_coordinates",
+    #         output_colname="birth_coordinates",
+    #     ),
+    # },
+    # {
+    #     "col_name": "country_citizenLabel",
+    #     "format_master_data": country_citizenship_format_master_record,
+    #     "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
+    # },
 ]
 
 from corrupt.error_vector import (
     CompositeCorruption,
     RecordCorruptor,
-    ProbabilityAdjustmentFromLookup,
     ProbabilityAdjustmentFromSQL,
-    name_inversion,
-    initial,
 )
 
 rc = RecordCorruptor()
 
-name_inversion_corruption = CompositeCorruption(
-    name="name_inversion_corruption", baseline_probability=0.9
+# Create a timedelta corruption with baseline probability 20%
+dob_timedelta = CompositeCorruption(name="dob_timedelta", baseline_probability=0.2)
+
+# Add a functino to the corruption that defines how to corrupt
+dob_timedelta.add_corruption_function(
+    date_corrupt_timedelta, args={"input_colname": "dob", "output_colname": "dob"}
 )
-name_inversion_corruption.add_corruption_function(
-    name_inversion, args={"col1": "first_name", "col2": "surname"}
+
+# register this error with the main RecordCorruptor class
+rc.add_composite_corruption(dob_timedelta)
+
+# A corruption function that simultaneously dob and dod to jan first
+dob_dod_jan_first = CompositeCorruption(
+    name="dob_dod_jan_first_corruption", baseline_probability=0.5
 )
-rc.add_composite_corruption(name_inversion_corruption)
-
-
-initital_corruption = CompositeCorruption(
-    "first_name_initial_corruption", baseline_probability=0.9
+dob_dod_jan_first.add_corruption_function(
+    date_corrupt_jan_first, args={"input_colname": "dob", "output_colname": "dob"}
 )
-initital_corruption.add_corruption_function(initial, args={"col": "first_name"})
-rc.add_composite_corruption(initital_corruption)
+dob_dod_jan_first.add_corruption_function(
+    date_corrupt_jan_first, args={"input_colname": "dod", "output_colname": "dod"}
+)
 
-# Add adjustments
-corruption_lookup = {
-    "ethnicity": {
-        "white": [(name_inversion_corruption, 10.0)],
-        "asian": [(name_inversion_corruption, 2.0)],
-    },
-    "full_name": {"robin": [(initital_corruption, 10.0)]},
-}
+rc.add_composite_corruption(dob_dod_jan_first)
 
-adjustment = ProbabilityAdjustmentFromLookup(corruption_lookup)
+# Make this twice as likely if the dob is < 1990
+sql_condition = "year(cast(dob as date)) < 1900"
+adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
 rc.add_probability_adjustment(adjustment)
 
-sql_condition = "len(first_name) > 3 and len(surname) > 3"
-adjustment = ProbabilityAdjustmentFromSQL(sql_condition, initital_corruption, 0.001)
-rc.add_probability_adjustment(adjustment)
 
-max_corrupted_records = 3
+max_corrupted_records = 10
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
 records = raw_data.to_dict(orient="records")
@@ -191,7 +188,16 @@ for i, master_input_record in enumerate(records):
     uncorrupted_output_record = generate_uncorrupted_output_record(
         formatted_master_record, config
     )
-    uncorrupted_output_record["ethnicity"] = "white"
+    uncorrupted_output_record["corruptions_applied"] = []
+
+    # import pprint
+
+    # pprint.pprint(formatted_master_record, indent=4)
+    # print("--")
+    # print("--")
+    # print("--")
+    # pprint.pprint(uncorrupted_output_record)
+    # break
 
     output_records.append(uncorrupted_output_record)
 
@@ -199,11 +205,17 @@ for i, master_input_record in enumerate(records):
     total_num_corrupted_records = np.random.choice(
         zipf_dist["vals"], p=zipf_dist["weights"]
     )
-
-    record = uncorrupted_output_record.copy()
-    rc.apply_probability_adjustments(record)
-    corrupted_record = rc.apply_corruptions_to_record(record)
-    output_records.append(corrupted_record)
+    for i in range(total_num_corrupted_records):
+        record_to_modify = uncorrupted_output_record.copy()
+        record_to_modify["corruptions_applied"] = []
+        record_to_modify["id"] = uncorrupted_output_record["cluster"] + f"_{i+1}"
+        record_to_modify["uncorrupted_record"] = False
+        rc.apply_probability_adjustments(uncorrupted_output_record)
+        corrupted_record = rc.apply_corruptions_to_record(
+            formatted_master_record,
+            record_to_modify,
+        )
+        output_records.append(corrupted_record)
 
 df = pd.DataFrame(output_records)
 

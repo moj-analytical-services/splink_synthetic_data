@@ -4,13 +4,8 @@ import logging
 import pandas as pd
 import duckdb
 
-logging.basicConfig(
-    format="%(message)s",
-)
 
 logger = logging.getLogger(__name__)
-
-logger.setLevel(logging.DEBUG)
 
 
 def prob_to_bayes_factor(prob):
@@ -19,16 +14,6 @@ def prob_to_bayes_factor(prob):
 
 def bayes_factor_to_prob(bf):
     return bf / (1 + bf)
-
-
-def name_inversion(rec, col1, col2):
-    rec[col1], rec[col2] = rec[col2], rec[col1]
-    return rec
-
-
-def initial(rec, col):
-    rec[col] = rec[col][:1]
-    return rec
 
 
 class CompositeCorruption:
@@ -162,7 +147,6 @@ class ProbabilityAdjustmentFromSQL:
 class RecordCorruptor:
     def __init__(self):
         self.corruptions: list[CompositeCorruption] = []
-        self.record = None
         self.probability_adjustments = []
 
     def add_composite_corruption(self, composite_corruption: CompositeCorruption):
@@ -191,9 +175,13 @@ class RecordCorruptor:
             functions.extend(c.sample())
         return functions
 
-    def apply_corruptions_to_record(self, record):
+    def apply_corruptions_to_record(self, formatted_master_data, record_to_modify):
         functions_to_apply = self.choose_functions_to_apply()
         for f in functions_to_apply:
-            record = f(record)
+            record_to_modify = f(
+                formatted_master_data,
+                record_to_modify,
+            )
+            record_to_modify["corruptions_applied"].append(f.func.__name__)
 
-        return record
+        return record_to_modify
