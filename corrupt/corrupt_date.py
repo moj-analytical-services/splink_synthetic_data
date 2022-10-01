@@ -37,7 +37,11 @@ def date_corrupt_typo(
 
 
 def date_corrupt_timedelta(
-    formatted_master_record, record_to_modify, input_colname, output_colname
+    formatted_master_record,
+    record_to_modify,
+    input_colname,
+    output_colname,
+    num_days_delta,
 ):
 
     if not record_to_modify[input_colname]:
@@ -46,14 +50,7 @@ def date_corrupt_timedelta(
     input_value = record_to_modify[input_colname]
     input_value = datetime.fromisoformat(input_value)
 
-    choice = np.random.choice(["small", "medium", "large"], p=[0.7, 0.2, 0.1])
-
-    if choice == "small":
-        delta = timedelta(days=random.randint(-5, 5))
-    elif choice == "medium":
-        delta = timedelta(days=random.randint(-61, 61))
-    elif choice == "large":
-        delta = timedelta(days=random.randint(1000, 1000))
+    delta = timedelta(days=random.randint(-num_days_delta, num_days_delta))
 
     input_value = input_value + delta
     record_to_modify[output_colname] = str(input_value.date())

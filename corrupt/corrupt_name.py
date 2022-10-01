@@ -25,7 +25,7 @@ def full_name_gen_uncorrupted_record(master_record, record_to_modify={}):
     return record_to_modify
 
 
-def full_name_alternative(formatted_master_record, record_to_modify={}):
+def full_name_alternative(formatted_master_record, record_to_modify):
     """Choose an alternative full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
@@ -34,7 +34,7 @@ def full_name_alternative(formatted_master_record, record_to_modify={}):
     elif len(options) == 1:
         record_to_modify["full_name"] = options[0]
     else:
-        record_to_modify["full_name"] = np.random.choice(options).lower()
+        record_to_modify["full_name"] = np.random.choice(options)
     return record_to_modify
 
 
@@ -72,7 +72,7 @@ def each_name_alternatives(formatted_master_record, record_to_modify={}):
         else:
             output_names.append(n)
 
-    record_to_modify["full_name"] = " ".join(output_names).lower()
+    record_to_modify["full_name"] = " ".join(output_names)
 
     return record_to_modify
 

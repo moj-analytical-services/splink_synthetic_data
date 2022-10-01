@@ -76,7 +76,7 @@ limit 5
 
 pd.options.display.max_columns = 1000
 raw_data = con.execute(sql).df()
-raw_data
+display(raw_data)
 
 # Configure how corruptions will be made for each field
 
@@ -142,12 +142,17 @@ from corrupt.error_vector import (
 
 rc = RecordCorruptor()
 
+
+########
+# Date of birth and date of death corruptions
+########
 # Create a timedelta corruption with baseline probability 20%
 dob_timedelta = CompositeCorruption(name="dob_timedelta", baseline_probability=0.2)
 
 # Add a functino to the corruption that defines how to corrupt
 dob_timedelta.add_corruption_function(
-    date_corrupt_timedelta, args={"input_colname": "dob", "output_colname": "dob"}
+    date_corrupt_timedelta,
+    args={"input_colname": "dob", "output_colname": "dob", "num_days_delta": 50},
 )
 
 # register this error with the main RecordCorruptor class
@@ -170,6 +175,15 @@ rc.add_composite_corruption(dob_dod_jan_first)
 sql_condition = "year(cast(dob as date)) < 1900"
 adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
 rc.add_probability_adjustment(adjustment)
+
+
+########
+# Name-based corruptions
+########
+
+alternative_name = CompositeCorruption(name="pick_alt_name", baseline_probability=0.2)
+alternative_name.add_corruption_function(full_name_alternative, args={})
+rc.add_composite_corruption(alternative_name)
 
 
 max_corrupted_records = 10
