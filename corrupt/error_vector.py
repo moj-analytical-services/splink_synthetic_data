@@ -101,12 +101,14 @@ class ProbabilityAdjustmentFromLookup:
         adjustment_tuples = []
         for record_column, lookup in self.adjustment_lookup.items():
             record_value = record[record_column]
-            logger.debug(
-                f"Record column: {record_column} "
-                f"Record value: {record_value}, selected adjustment tuple "
-                f"{lookup[record_value]}"
-            )
-            adjustment_tuples.extend(lookup[record_value])
+
+            if record_value in lookup:
+                logger.debug(
+                    f"Record column: {record_column} "
+                    f"Record value: {record_value}, selected adjustment tuple "
+                    f"{lookup[record_value]}"
+                )
+                adjustment_tuples.extend(lookup[record_value])
 
         return adjustment_tuples
 
@@ -195,66 +197,3 @@ class RecordCorruptor:
             record = f(record)
 
         return record
-
-
-name_inversion_corruption = CompositeCorruption(
-    name="name_inversion_corruption", baseline_probability=0.9
-)
-
-# Add one or more corruption functions
-# If multiple functions added, they will all be applied if this corruption is
-# selected for activation
-name_inversion_corruption.add_corruption_function(
-    name_inversion, args={"col1": "first_name", "col2": "surname"}
-)
-
-initital_corruption = CompositeCorruption(
-    "first_name_initial_corruption", baseline_probability=0.9
-)
-initital_corruption.add_corruption_function(initial, args={"col": "first_name"})
-
-
-rc = RecordCorruptor()
-rc.add_composite_corruption(name_inversion_corruption)
-rc.add_composite_corruption(initital_corruption)
-
-corruption_lookup = {
-    "ethnicity": {
-        "white": [(name_inversion_corruption, 10.0)],
-        "asian": [(name_inversion_corruption, 2.0)],
-    },
-    "first_name": {"robin": [(initital_corruption, 10.0)]},
-}
-
-adjustment = ProbabilityAdjustmentFromLookup(corruption_lookup)
-rc.add_probability_adjustment(adjustment)
-
-sql_condition = "len(first_name) > 3 and len(surname) > 3"
-adjustment = ProbabilityAdjustmentFromSQL(sql_condition, initital_corruption, 0.001)
-rc.add_probability_adjustment(adjustment)
-
-record = {"first_name": "robin", "surname": "linacre", "ethnicity": "white"}
-
-rc.apply_probability_adjustments(record)
-rc.apply_corruptions_to_record(record)
-
-
-# cs.add_adjustment_using_scenario({"ethnicity": "white"}, {c.name: 0.5})
-
-
-# records = []
-
-# for rec in records:
-#     sc.record = rec
-#     sc.choose_functions_to_apply()
-
-
-# # def generate_error_vectors(config, num_error_vectors_to_generate):
-# #     pass
-
-
-# # def apply_error_vector(error_vector, formatted_master_record, config):
-# #     """
-# #     Use an error vector to corrupt a record
-# #     """
-# #     pass
