@@ -38,7 +38,7 @@ def full_name_alternative(formatted_master_record, record_to_modify):
     return record_to_modify
 
 
-def each_name_alternatives(formatted_master_record, record_to_modify={}):
+def each_name_alternatives(formatted_master_record, record_to_modify):
     """Choose a full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]

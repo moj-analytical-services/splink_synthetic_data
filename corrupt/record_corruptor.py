@@ -152,6 +152,16 @@ class RecordCorruptor:
     def add_composite_corruption(self, composite_corruption: CompositeCorruption):
         self.corruptions.append(composite_corruption)
 
+    def add_simple_corruption(
+        self, name, corruption_function, args, baseline_probability
+    ):
+        corruption = CompositeCorruption(
+            name=name, baseline_probability=baseline_probability
+        )
+
+        corruption.add_corruption_function(corruption_function, args=args)
+        self.add_composite_corruption(corruption)
+
     def add_probability_adjustment(self, adjustment):
         self.probability_adjustments.append(adjustment)
 

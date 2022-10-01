@@ -54,6 +54,13 @@ from functools import partial
 from corrupt.geco_corrupt import get_zipf_dist
 
 
+from corrupt.record_corruptor import (
+    CompositeCorruption,
+    RecordCorruptor,
+    ProbabilityAdjustmentFromSQL,
+)
+
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format="%(message)s",
@@ -134,11 +141,6 @@ config = [
     # },
 ]
 
-from corrupt.error_vector import (
-    CompositeCorruption,
-    RecordCorruptor,
-    ProbabilityAdjustmentFromSQL,
-)
 
 rc = RecordCorruptor()
 
@@ -146,21 +148,23 @@ rc = RecordCorruptor()
 ########
 # Date of birth and date of death corruptions
 ########
-# Create a timedelta corruption with baseline probability 20%
-dob_timedelta = CompositeCorruption(name="dob_timedelta", baseline_probability=0.2)
 
-# Add a functino to the corruption that defines how to corrupt
-dob_timedelta.add_corruption_function(
-    date_corrupt_timedelta,
+# Create a timedelta corruption with baseline probability 20%
+# This is a simple independent corruption function that's not affected
+# by the presence or absence of other corruptions, or the values in the data
+rc.add_simple_corruption(
+    name="dob_timedelta",
+    corruption_function=date_corrupt_timedelta,
     args={"input_colname": "dob", "output_colname": "dob", "num_days_delta": 50},
+    baseline_probability=0.6,
 )
 
-# register this error with the main RecordCorruptor class
-rc.add_composite_corruption(dob_timedelta)
 
-# A corruption function that simultaneously dob and dod to jan first
+# A corruption function that simultaneously sets dob and dod to jan first
+# We will also add a probability adjustment that modifies the probability
+# of activation based on the values in the record
 dob_dod_jan_first = CompositeCorruption(
-    name="dob_dod_jan_first_corruption", baseline_probability=0.5
+    name="dob_dod_jan_first_corruption", baseline_probability=0.1
 )
 dob_dod_jan_first.add_corruption_function(
     date_corrupt_jan_first, args={"input_colname": "dob", "output_colname": "dob"}
@@ -181,9 +185,14 @@ rc.add_probability_adjustment(adjustment)
 # Name-based corruptions
 ########
 
-alternative_name = CompositeCorruption(name="pick_alt_name", baseline_probability=0.2)
-alternative_name.add_corruption_function(full_name_alternative, args={})
-rc.add_composite_corruption(alternative_name)
+rc.add_simple_corruption(
+    name="pick_alt_name",
+    corruption_function=full_name_alternative,
+    args={},
+    baseline_probability=0.2,
+)
+
+
 
 
 max_corrupted_records = 10
