@@ -127,3 +127,14 @@ def full_name_null(formatted_master_record, record_to_modify={}):
     else:
         record_to_modify["full_name"] = None
     return record_to_modify
+
+
+def name_inversion(formatted_master_record, record_to_modify):
+
+    given = formatted_master_record["given_nameLabel"]
+    family = formatted_master_record["family_nameLabel"]
+
+    if len(given) > 0 and len(family) > 0:
+        record_to_modify["full_name"] = family[0] + " " + given[0]
+
+    return record_to_modify

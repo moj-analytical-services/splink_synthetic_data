@@ -30,7 +30,7 @@ from corrupt.corrupt_name import (
     full_name_alternative,
     each_name_alternatives,
     full_name_typo,
-    full_name_null,
+    name_inversion,
 )
 
 
@@ -46,6 +46,10 @@ from corrupt.corrupt_country_citizenship import (
     country_citizenship_gen_uncorrupted_record,
 )
 
+
+from corrupt.corrupt_birth_country import birth_country_gen_uncorrupted_record
+
+
 from path_fns.filepaths import TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON
 
 from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_distance
@@ -56,6 +60,7 @@ from corrupt.geco_corrupt import get_zipf_dist
 
 from corrupt.record_corruptor import (
     CompositeCorruption,
+    ProbabilityAdjustmentFromLookup,
     RecordCorruptor,
     ProbabilityAdjustmentFromSQL,
 )
@@ -78,6 +83,7 @@ in_path = os.path.join(
 sql = f"""
 select *
 from '{in_path}'
+where dod[1] > date'1980-01-01'
 limit 5
 """
 
@@ -101,6 +107,13 @@ config = [
         "col_name": "full_name",
         "format_master_data": master_record_no_op,
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
+    },
+    {
+        "col_name": "birth_country",
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="birth_countryLabel"
+        ),
+        "gen_uncorrupted_record": birth_country_gen_uncorrupted_record,
     },
     # {
     #     "col_name": "occupation",
@@ -153,12 +166,15 @@ rc = RecordCorruptor()
 # This is a simple independent corruption function that's not affected
 # by the presence or absence of other corruptions, or the values in the data
 rc.add_simple_corruption(
-    name="dob_timedelta",
-    corruption_function=date_corrupt_timedelta,
-    args={"input_colname": "dob", "output_colname": "dob", "num_days_delta": 50},
-    baseline_probability=0.6,
+    name="dob_timedelta",  # So we can keep a list of the corruptions that were activated
+    corruption_function=date_corrupt_timedelta,  # A python function containing the definition of the function
+    args={
+        "input_colname": "dob",
+        "output_colname": "dob",
+        "num_days_delta": 50,
+    },  # Any arguments that need to be passed to the python function
+    baseline_probability=0.1,
 )
-
 
 # A corruption function that simultaneously sets dob and dod to jan first
 # We will also add a probability adjustment that modifies the probability
@@ -181,19 +197,45 @@ adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
 rc.add_probability_adjustment(adjustment)
 
 
+# Note that the order in which you register corruptions is the order in which they're
+# executed.  e.g. you might want the jan first corruption to come after the timedelta
+# corruption, which may be better in the case where both are activated
+
+
 ########
 # Name-based corruptions
 ########
 
+
 rc.add_simple_corruption(
-    name="pick_alt_name",
+    name="pick_alt_full_name",
     corruption_function=full_name_alternative,
     args={},
     baseline_probability=0.2,
 )
 
+rc.add_simple_corruption(
+    name="pick_alternative_individual_names",
+    corruption_function=each_name_alternatives,
+    args={},
+    baseline_probability=0.1,
+)
 
+# Name inversions more common for certain birthCountries
+name_inversion_corrpution = CompositeCorruption(
+    name="name_inversion", baseline_probability=0.1
+)
+name_inversion_corrpution.add_corruption_function(name_inversion, args={})
+rc.add_composite_corruption(name_inversion_corrpution)
 
+adjustment_lookup = {
+    "birth_country": {
+        "Japan": [(name_inversion_corrpution, 4)],
+        "China": [(name_inversion_corrpution, 4)],
+    }
+}
+adjustment = ProbabilityAdjustmentFromLookup(adjustment_lookup)
+rc.add_probability_adjustment(adjustment)
 
 max_corrupted_records = 10
 zipf_dist = get_zipf_dist(max_corrupted_records)
