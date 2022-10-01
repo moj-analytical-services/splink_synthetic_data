@@ -1,94 +1,159 @@
-import numpy as np
+from functools import partial
+import random
 
 
-def generate_error_vectors(config, num_error_vectors_to_generate):
-    """
-    An error vector is a succinct description of how corruptions will be introduced
-    into an original, master record
-
-    For each original record, multiple error vectors can be generated,
-    resulting in n duplicate records being generated.
+def prob_to_bayes_factor(prob):
+    return prob / (1 - prob)
 
 
-    The error vector is in the format
-
-    {
-        output_col_name: corruption_function_index
-    }
-
-    For example:
-
-    {
-        full_name: 2,
-        dob: 1,
-        occuption: 0,
-        etc.
-    }
-
-    The codings for the corruption function index are as follows:
-
-    -1: Output a null
-     0: Do nothing (i.e. leave original data )
-     1: Use the first error function speficied in the config
-     ..
-     n: Use the nth error function specified in the config
-
-    """
-
-    # The following is an extremely simple implementation with no correlations!
-
-    list_error_vectors = []
-
-    for this_vector in range(num_error_vectors_to_generate):
-        error_vector = {}
-        for entry in config:
-            col_name = entry["col_name"]
-            corruption_functions = entry["corruption_functions"]
-            num_corruption_functions = len(corruption_functions)
-
-            null_probability = 0.1
-            do_nothing_probability = 0.5
-            probability_corrupt = 1 - null_probability - do_nothing_probability
-
-            reweighted_corruption_probabilities = [
-                f["p"] * probability_corrupt for f in corruption_functions
-            ]
-
-            # i.e. if there are two corruption functions, this will be [-1, 0, 1, 2]
-            error_vector_values = [-1] + list(range(num_corruption_functions + 1))
-
-            error_vector_weights = [
-                null_probability,
-                do_nothing_probability,
-            ] + reweighted_corruption_probabilities
-
-            chosen_error_vector_value = np.random.choice(
-                error_vector_values, p=error_vector_weights
-            )
-            error_vector[col_name] = chosen_error_vector_value
-        list_error_vectors.append(error_vector)
-    return list_error_vectors
+def bayes_factor_to_prob(bf):
+    return bf / (1 + bf)
 
 
-def apply_error_vector(error_vector, formatted_master_record, config):
-    """
-    Use an error vector to corrupt a record
-    """
-    output_record = {}
-    for output_col in config:
-        output_col_name = output_col["col_name"]
-        null_fn = output_col["null_function"]
-        no_change_fn = output_col["gen_uncorrupted_record"]
-        error_vector_value = error_vector[output_col_name]
+def name_inversion(rec, col1, col2):
+    rec[col1], rec[col2] = rec[col2], rec[col1]
+    return rec
 
-        corruption_functions = [c["fn"] for c in output_col["corruption_functions"]]
-        if error_vector_value == -1:
-            fn = null_fn
-        elif error_vector_value == 0:
-            fn = no_change_fn
+
+def initial(rec, col):
+    rec[col] = rec[col][:1]
+    return rec
+
+
+class CompositeCorruption:
+    def __init__(self, baseline_probability=0.1):
+        self.functions = []
+        self.baseline_probability = baseline_probability
+        self.adjusted_probability = None
+
+    def add_corruption_function(self, fn, args):
+        curried = partial(fn, **args)
+        self.functions.append(curried)
+
+    def reset_probability(self):
+        self.adjusted_probability = self.baseline_probability
+
+    def adjust_probability_using_bayes_factor(self, bayes_factor_adjustment):
+        bf = prob_to_bayes_factor(self.adjusted_probability)
+        bf = bf * bayes_factor_adjustment
+        self.adjusted_probability = bayes_factor_to_prob(bf)
+
+    def sample(self):
+        if random.uniform(0, 1) < self.adjusted_probability:
+            self.reset_probability()
+            return self.functions
         else:
-            fn = corruption_functions[error_vector_value - 1]
+            self.reset_probability()
+            return []
 
-        output_record = fn(formatted_master_record, record_to_modify=output_record)
 
-    return output_record
+name_inversion_corruption = CompositeCorruption(baseline_probability=0.9)
+name_inversion_corruption.add_corruption_function(
+    name_inversion, args={"col1": "first_name", "col2": "surname"}
+)
+
+
+initital_corruption = CompositeCorruption(baseline_probability=0.9)
+initital_corruption.add_corruption_function(initial, args={"col": "first_name"})
+
+
+class ProbabilityAdjustmentFromLookup:
+    # Uses a record
+    def __init__(self, lookup):
+        self.adjustment_lookup = lookup
+
+    def get_adjustment_tuples(self, record):
+        adjustment_tuples = []
+        for record_column, lookup in self.adjustment_lookup.items():
+            record_value = record[record_column]
+            adjustment_tuples.extend(lookup[record_value])
+        return adjustment_tuples
+
+    def apply_adjustment_weights(self):
+        corruption_weight_lookup = self.get_adjustment_weights()
+        for corruption, adjustment_weight in corruption_weight_lookup:
+            corruption.adjust_probability_using_bayes_factor(adjustment_weight)
+
+
+class RecordCorruptor:
+    def __init__(self):
+        self.corruptions = []
+        self.record = None
+        self.probability_adjustments = []
+
+    def add_corruption_type(self, corruption_type):
+        self.corruptions.append(corruption_type)
+
+    def add_probability_adjustment(self, adjustment):
+        self.probability_adjustments.append(adjustment)
+
+    def probability_adjustment_tuples(self, record):
+        tuples = []
+        for pa in self.probability_adjustments:
+            new_tuples = pa.get_adjustment_tuples(record)
+            tuples.extend(new_tuples)
+
+        return tuples
+
+    def apply_probability_adjustments(self, record):
+        for c in self.corruptions:
+            c.reset_probability()
+        for corruption, bayes_factor in self.probability_adjustment_tuples(record):
+            corruption.adjust_probability_using_bayes_factor(bayes_factor)
+
+    def choose_functions_to_apply(self):
+        functions = []
+        for c in self.corruptions:
+            functions.extend(c.sample())
+        return functions
+
+    def apply_corruptions_to_record(self, record):
+
+        functions_to_apply = self.choose_functions_to_apply()
+        for f in functions_to_apply:
+            record = f(record)
+
+        return record
+
+
+rc = RecordCorruptor()
+rc.add_corruption_type(name_inversion_corruption)
+rc.add_corruption_type(initital_corruption)
+
+corruption_lookup = {
+    "ethnicity": {
+        "white": [(name_inversion_corruption, 10.0)],
+        "asian": [(name_inversion_corruption, 2.0)],
+    },
+    "first_name": {"robin": [(initital_corruption, 10.0)]},
+}
+
+adjustment = ProbabilityAdjustmentFromLookup(corruption_lookup)
+
+rc.add_probability_adjustment(adjustment)
+
+record = {"first_name": "robin", "surname": "linacre", "ethnicity": "white"}
+
+rc.apply_probability_adjustments(record)
+rc.apply_corruptions_to_record(record)
+
+
+# cs.add_adjustment_using_scenario({"ethnicity": "white"}, {c.name: 0.5})
+
+
+# records = []
+
+# for rec in records:
+#     sc.record = rec
+#     sc.choose_functions_to_apply()
+
+
+# # def generate_error_vectors(config, num_error_vectors_to_generate):
+# #     pass
+
+
+# # def apply_error_vector(error_vector, formatted_master_record, config):
+# #     """
+# #     Use an error vector to corrupt a record
+# #     """
+# #     pass
