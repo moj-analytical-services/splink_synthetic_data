@@ -1,5 +1,16 @@
 from functools import partial
 import random
+import logging
+import pandas as pd
+import duckdb
+
+logging.basicConfig(
+    format="%(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
+logger.setLevel(logging.DEBUG)
 
 
 def prob_to_bayes_factor(prob):
@@ -21,7 +32,8 @@ def initial(rec, col):
 
 
 class CompositeCorruption:
-    def __init__(self, baseline_probability=0.1):
+    def __init__(self, name="", baseline_probability=0.1):
+        self.name = name
         self.functions = []
         self.baseline_probability = baseline_probability
         self.adjusted_probability = None
@@ -39,6 +51,13 @@ class CompositeCorruption:
         self.adjusted_probability = bayes_factor_to_prob(bf)
 
     def sample(self):
+        """activate corruption functions based on self.adjusted_probability"""
+
+        logger.debug(
+            f"Probability {self.name} composite corruption will be selected is "
+            f"{self.adjusted_probability}"
+        )
+
         if random.uniform(0, 1) < self.adjusted_probability:
             self.reset_probability()
             return self.functions
@@ -47,42 +66,105 @@ class CompositeCorruption:
             return []
 
 
-name_inversion_corruption = CompositeCorruption(baseline_probability=0.9)
-name_inversion_corruption.add_corruption_function(
-    name_inversion, args={"col1": "first_name", "col2": "surname"}
-)
-
-
-initital_corruption = CompositeCorruption(baseline_probability=0.9)
-initital_corruption.add_corruption_function(initial, args={"col": "first_name"})
-
-
 class ProbabilityAdjustmentFromLookup:
-    # Uses a record
     def __init__(self, lookup):
+        """
+        lookup is a lookup between fields in the input record, their values, and
+        the adjustments to make to the probability of activation, specified as
+        a bayes factor
+
+        e.g.
+        {
+            "ethnicity": {
+                "white": [(name_inversion_corruption, 0.1)],
+                "asian": [(name_inversion_corruption, 5.0)],
+            },
+            "first_name": {"robin": [(initital_corruption, 2.0)]},
+        }
+
+        """
         self.adjustment_lookup = lookup
 
     def get_adjustment_tuples(self, record):
+        """
+        Uses the record to lookup and return a list of adjustment tuples like:
+        [
+            (name_inversion_corruption, 0.1),
+            (initital_corruption, 2.0)
+        ]
+        i.e.
+            - decrease the probability of activating the name inversion corruption
+                using a bayes factor of 0.1
+            - increase the probability of activating the initial_corruption
+                using a bayes factor of 2.0
+        """
         adjustment_tuples = []
         for record_column, lookup in self.adjustment_lookup.items():
             record_value = record[record_column]
+            logger.debug(
+                f"Record column: {record_column} "
+                f"Record value: {record_value}, selected adjustment tuple "
+                f"{lookup[record_value]}"
+            )
             adjustment_tuples.extend(lookup[record_value])
+
         return adjustment_tuples
 
-    def apply_adjustment_weights(self):
-        corruption_weight_lookup = self.get_adjustment_weights()
-        for corruption, adjustment_weight in corruption_weight_lookup:
-            corruption.adjust_probability_using_bayes_factor(adjustment_weight)
+
+class ProbabilityAdjustmentFromSQL:
+    def __init__(self, sql, composite_corruption: CompositeCorruption, bayes_factor):
+        """
+        sql is a sql expression like:
+        'len(first_name) < 3 and len(surname) < 3'
+
+        }
+
+        """
+        self.sql = sql
+        self.composite_corruption = composite_corruption
+        self.bayes_factor = bayes_factor
+
+    def get_adjustment_tuples(self, record):
+        """
+        Uses the record to lookup and return a list of adjustment tuples like:
+        [
+            (name_inversion_corruption, 0.1),
+            (initital_corruption, 2.0)
+        ]
+        i.e.
+            - decrease the probability of activating the name inversion corruption
+                using a bayes factor of 0.1
+            - increase the probability of activating the initial_corruption
+                using a bayes factor of 2.0
+        """
+        df = pd.DataFrame([record])
+        con = duckdb.connect()
+        con.register("df", df)
+        sql = f"""
+        select {self.sql} as condition_matches
+        from df
+        """
+        matches = con.execute(sql).fetchone()[0]
+
+        if matches:
+            adjustment_tuples = [(self.composite_corruption, self.bayes_factor)]
+            logger.debug(
+                f"SQL condition {self.sql} matched, "
+                f" tuples selected: {adjustment_tuples}"
+            )
+            return adjustment_tuples
+        else:
+            return []
 
 
 class RecordCorruptor:
     def __init__(self):
-        self.corruptions = []
+        self.corruptions: list[CompositeCorruption] = []
         self.record = None
         self.probability_adjustments = []
 
-    def add_corruption_type(self, corruption_type):
-        self.corruptions.append(corruption_type)
+    def add_composite_corruption(self, composite_corruption: CompositeCorruption):
+        self.corruptions.append(composite_corruption)
 
     def add_probability_adjustment(self, adjustment):
         self.probability_adjustments.append(adjustment)
@@ -108,7 +190,6 @@ class RecordCorruptor:
         return functions
 
     def apply_corruptions_to_record(self, record):
-
         functions_to_apply = self.choose_functions_to_apply()
         for f in functions_to_apply:
             record = f(record)
@@ -116,9 +197,26 @@ class RecordCorruptor:
         return record
 
 
+name_inversion_corruption = CompositeCorruption(
+    name="name_inversion_corruption", baseline_probability=0.9
+)
+
+# Add one or more corruption functions
+# If multiple functions added, they will all be applied if this corruption is
+# selected for activation
+name_inversion_corruption.add_corruption_function(
+    name_inversion, args={"col1": "first_name", "col2": "surname"}
+)
+
+initital_corruption = CompositeCorruption(
+    "first_name_initial_corruption", baseline_probability=0.9
+)
+initital_corruption.add_corruption_function(initial, args={"col": "first_name"})
+
+
 rc = RecordCorruptor()
-rc.add_corruption_type(name_inversion_corruption)
-rc.add_corruption_type(initital_corruption)
+rc.add_composite_corruption(name_inversion_corruption)
+rc.add_composite_corruption(initital_corruption)
 
 corruption_lookup = {
     "ethnicity": {
@@ -129,7 +227,10 @@ corruption_lookup = {
 }
 
 adjustment = ProbabilityAdjustmentFromLookup(corruption_lookup)
+rc.add_probability_adjustment(adjustment)
 
+sql_condition = "len(first_name) > 3 and len(surname) > 3"
+adjustment = ProbabilityAdjustmentFromSQL(sql_condition, initital_corruption, 0.001)
 rc.add_probability_adjustment(adjustment)
 
 record = {"first_name": "robin", "surname": "linacre", "ethnicity": "white"}
