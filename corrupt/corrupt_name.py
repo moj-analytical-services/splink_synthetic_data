@@ -1,6 +1,6 @@
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import functools
-import random
 import pandas as pd
 
 from corrupt.geco_corrupt import CorruptValueQuerty, position_mod_uniform
@@ -68,13 +68,19 @@ def each_name_alternatives(formatted_master_record, record_to_modify):
             name_dict = given_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
-            output_names.append(np.random.choice(alt_names, p=weights))
+            try:
+                output_names.append(np.random.choice(alt_names, p=weights))
+            except ValueError:
+                print(weights)
 
         elif n in family_name_alt_lookup:
             name_dict = family_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
-            output_names.append(np.random.choice(alt_names, p=weights))
+            try:
+                output_names.append(np.random.choice(alt_names, p=weights))
+            except ValueError:
+                print(weights)
 
         else:
             output_names.append(n)

@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import os
 import logging
@@ -325,52 +326,64 @@ pd.options.display.max_colwidth = 1000
 
 Path(FINAL_CORRUPTED_OUTPUT_FILES_BASE).mkdir(parents=True, exist_ok=True)
 
-for year in range(1500, 1600):
 
-    sql = f"""
-    select *
-    from '{in_path}'
-    where
-        year(try_cast(dod[1] as date)) = {year}
+if __name__ == "__main__":
 
-    """
+    parser = argparse.ArgumentParser(description="data_linking job runner")
 
-    raw_data = con.execute(sql).df()
-    records = raw_data.to_dict(orient="records")
+    parser.add_argument("--start_year", type=int)
+    parser.add_argument("--num_years", type=int)
+    args = parser.parse_args()
+    start_year = args.start_year
+    num_years = args.num_years
 
-    output_records = []
-    for i, master_input_record in enumerate(records):
+    for year in range(start_year, start_year + num_years + 1):
 
-        # Formats the input data into an easy format for producing
-        # an uncorrupted/corrupted outputs records
-        formatted_master_record = format_master_data(master_input_record, config)
+        sql = f"""
+        select *
+        from '{in_path}'
+        where
+            year(try_cast(dod[1] as date)) = {year}
+        """
 
-        uncorrupted_output_record = generate_uncorrupted_output_record(
-            formatted_master_record, config
-        )
-        uncorrupted_output_record["corruptions_applied"] = []
+        raw_data = con.execute(sql).df()
+        records = raw_data.to_dict(orient="records")
 
-        output_records.append(uncorrupted_output_record)
+        output_records = []
+        for i, master_input_record in enumerate(records):
 
-        # How many corrupted records to generate
-        total_num_corrupted_records = np.random.choice(
-            zipf_dist["vals"], p=zipf_dist["weights"]
-        )
+            # Formats the input data into an easy format for producing
+            # an uncorrupted/corrupted outputs records
+            formatted_master_record = format_master_data(master_input_record, config)
 
-        for i in range(total_num_corrupted_records):
-            record_to_modify = uncorrupted_output_record.copy()
-            record_to_modify["corruptions_applied"] = []
-            record_to_modify["id"] = uncorrupted_output_record["cluster"] + f"_{i+1}"
-            record_to_modify["uncorrupted_record"] = False
-            rc.apply_probability_adjustments(uncorrupted_output_record)
-            corrupted_record = rc.apply_corruptions_to_record(
-                formatted_master_record,
-                record_to_modify,
+            uncorrupted_output_record = generate_uncorrupted_output_record(
+                formatted_master_record, config
             )
-            output_records.append(corrupted_record)
+            uncorrupted_output_record["corruptions_applied"] = []
 
-    df = pd.DataFrame(output_records)
-    path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
+            output_records.append(uncorrupted_output_record)
 
-    df.to_parquet(path, index=False)
-    print(f"written {year} with {len(df):,.0f} records")
+            # How many corrupted records to generate
+            total_num_corrupted_records = np.random.choice(
+                zipf_dist["vals"], p=zipf_dist["weights"]
+            )
+
+            for i in range(total_num_corrupted_records):
+                record_to_modify = uncorrupted_output_record.copy()
+                record_to_modify["corruptions_applied"] = []
+                record_to_modify["id"] = (
+                    uncorrupted_output_record["cluster"] + f"_{i+1}"
+                )
+                record_to_modify["uncorrupted_record"] = False
+                rc.apply_probability_adjustments(uncorrupted_output_record)
+                corrupted_record = rc.apply_corruptions_to_record(
+                    formatted_master_record,
+                    record_to_modify,
+                )
+                output_records.append(corrupted_record)
+
+        df = pd.DataFrame(output_records)
+        path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
+
+        df.to_parquet(path, index=False)
+        print(f"written {year} with {len(df):,.0f} records")
