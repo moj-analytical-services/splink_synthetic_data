@@ -1,6 +1,6 @@
+from multiprocessing.sharedctypes import Value
 import numpy as np
 import functools
-import random
 import pandas as pd
 
 from corrupt.geco_corrupt import CorruptValueQuerty, position_mod_uniform
@@ -21,24 +21,31 @@ def get_family_name_alternatives_lookup():
 
 
 def full_name_gen_uncorrupted_record(master_record, record_to_modify={}):
-    record_to_modify["full_name"] = master_record["humanLabel"][0]
+    full_name = (
+        " ".join(master_record["given_nameLabel"])
+        + " "
+        + " ".join(master_record["family_nameLabel"])
+    )
+    record_to_modify["full_name"] = full_name.lower()
     return record_to_modify
 
 
-def full_name_alternative(formatted_master_record, record_to_modify={}):
+def full_name_alternative(formatted_master_record, record_to_modify):
     """Choose an alternative full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
     if options is None:
-        record_to_modify["full_name"] = None
+        full_name = None
     elif len(options) == 1:
-        record_to_modify["full_name"] = options[0]
+        full_name = options[0]
     else:
-        record_to_modify["full_name"] = np.random.choice(options).lower()
+        full_name = np.random.choice(options)
+    record_to_modify["full_name"] = full_name.lower()
+
     return record_to_modify
 
 
-def each_name_alternatives(formatted_master_record, record_to_modify={}):
+def each_name_alternatives(formatted_master_record, record_to_modify):
     """Choose a full name if one exists"""
 
     options = formatted_master_record["full_name_arr"]
@@ -61,31 +68,31 @@ def each_name_alternatives(formatted_master_record, record_to_modify={}):
             name_dict = given_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
-            output_names.append(np.random.choice(alt_names, p=weights))
+            try:
+                output_names.append(np.random.choice(alt_names, p=weights))
+            except ValueError:
+                print(weights)
 
         elif n in family_name_alt_lookup:
             name_dict = family_name_alt_lookup[n]
             alt_names = name_dict["alt_name_arr"]
             weights = name_dict["alt_name_weight_arr"]
-            output_names.append(np.random.choice(alt_names, p=weights))
+            try:
+                output_names.append(np.random.choice(alt_names, p=weights))
+            except ValueError:
+                print(weights)
 
         else:
             output_names.append(n)
 
-    record_to_modify["full_name"] = " ".join(output_names).lower()
+    record_to_modify["full_name"] = " ".join(output_names)
 
     return record_to_modify
 
 
-def full_name_typo(formatted_master_record, record_to_modify={}):
+def full_name_typo(formatted_master_record, record_to_modify):
 
-    options = formatted_master_record["full_name_arr"]
-
-    if options is None:
-        record_to_modify["full_name"] = None
-        return record_to_modify
-
-    full_name = options[0]
+    full_name = record_to_modify["full_name"]
 
     querty_corruptor = CorruptValueQuerty(
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
@@ -96,34 +103,13 @@ def full_name_typo(formatted_master_record, record_to_modify={}):
     return record_to_modify
 
 
-def full_name_null(formatted_master_record, record_to_modify={}):
+def name_inversion(formatted_master_record, record_to_modify):
 
-    new_name = formatted_master_record["full_name_arr"][0].split(" ")
+    given = formatted_master_record["given_nameLabel"]
+    family = formatted_master_record["family_nameLabel"]
 
-    try:
-        first = new_name.pop(0)
-    except IndexError:
-        first = None
-    try:
-        last = new_name.pop()
-    except IndexError:
-        last = None
+    if len(given) > 0 and len(family) > 0:
+        full_name = family[0] + " " + given[0]
+    record_to_modify["full_name"] = full_name.lower()
 
-    # Erase middle names with probability 0.5
-    new_name = [n for n in new_name if random.uniform(0, 1) > 0.5]
-
-    # Erase first or last name with prob null prob
-
-    if random.uniform(0, 1) > 1 / 2:
-        first = None
-    if random.uniform(0, 1) > 1 / 2:
-        last = None
-
-    new_name = [first] + new_name + [last]
-
-    new_name = [n for n in new_name if n is not None]
-    if len(new_name) > 0:
-        record_to_modify["full_name"] = " ".join(new_name)
-    else:
-        record_to_modify["full_name"] = None
     return record_to_modify

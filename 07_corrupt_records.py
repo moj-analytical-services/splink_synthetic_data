@@ -1,21 +1,18 @@
+import argparse
+from pathlib import Path
 import os
-
 import logging
-
-
 import pandas as pd
 import numpy as np
-
 import duckdb
 
-from corrupt.corrupt_string import string_corrupt_numpad
 
 from corrupt.corruption_functions import (
     master_record_no_op,
-    basic_null_fn,
     format_master_data,
     generate_uncorrupted_output_record,
     format_master_record_first_array_item,
+    null_corruption,
 )
 
 
@@ -29,14 +26,15 @@ from corrupt.corrupt_name import (
     full_name_gen_uncorrupted_record,
     full_name_alternative,
     each_name_alternatives,
+    name_inversion,
     full_name_typo,
-    full_name_null,
 )
 
 
 from corrupt.corrupt_date import (
     date_corrupt_timedelta,
     date_gen_uncorrupted_record,
+    date_corrupt_jan_first,
 )
 
 from corrupt.corrupt_country_citizenship import (
@@ -45,14 +43,28 @@ from corrupt.corrupt_country_citizenship import (
     country_citizenship_gen_uncorrupted_record,
 )
 
-from path_fns.filepaths import TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON
+
+from corrupt.corrupt_birth_country import birth_country_gen_uncorrupted_record
+
+
+from path_fns.filepaths import (
+    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON,
+    FINAL_CORRUPTED_OUTPUT_FILES_BASE,
+)
 
 from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_distance
 
 from functools import partial
 from corrupt.geco_corrupt import get_zipf_dist
 
-from corrupt.error_vector import generate_error_vectors, apply_error_vector
+
+from corrupt.record_corruptor import (
+    CompositeCorruption,
+    ProbabilityAdjustmentFromLookup,
+    RecordCorruptor,
+    ProbabilityAdjustmentFromSQL,
+)
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -68,16 +80,6 @@ in_path = os.path.join(
 )
 
 
-sql = f"""
-select *
-from '{in_path}'
-limit 5
-"""
-
-pd.options.display.max_columns = 1000
-raw_data = con.execute(sql).df()
-raw_data
-
 # Configure how corruptions will be made for each field
 
 # Col name is the OUTPUT column name.  For instance, we may input given name,
@@ -89,28 +91,23 @@ raw_data
 # 'gen_uncorrupted_record' and 'corruption_functions'
 
 
-# Finally, as we generate more duplicate records, we introduce more and more errors.
-# The keys start_prob_corrupt, end_prob_corrupt, start_prob_null, end_prob_null control
-# the probability of corruption
-
 config = [
     {
         "col_name": "full_name",
         "format_master_data": master_record_no_op,
         "gen_uncorrupted_record": full_name_gen_uncorrupted_record,
-        "corruption_functions": [
-            {"fn": full_name_alternative, "p": 0.5},
-            {"fn": each_name_alternatives, "p": 0.4},
-            {"fn": full_name_typo, "p": 0.1},
-        ],
-        "null_function": full_name_null,
+    },
+    {
+        "col_name": "birth_country",
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="birth_countryLabel"
+        ),
+        "gen_uncorrupted_record": birth_country_gen_uncorrupted_record,
     },
     {
         "col_name": "occupation",
         "format_master_data": occupation_format_master_record,
         "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
-        "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
-        "null_function": basic_null_fn("occupation"),
     },
     {
         "col_name": "dob",
@@ -120,21 +117,15 @@ config = [
         "gen_uncorrupted_record": partial(
             date_gen_uncorrupted_record, input_colname="dob", output_colname="dob"
         ),
-        "corruption_functions": [
-            {
-                "fn": partial(
-                    date_corrupt_timedelta, input_colname="dob", output_colname="dob"
-                ),
-                "p": 0.7,
-            },
-            {
-                "fn": partial(
-                    string_corrupt_numpad, input_colname="dob", output_colname="dob"
-                ),
-                "p": 0.3,
-            },
-        ],
-        "null_function": basic_null_fn("dob"),
+    },
+    {
+        "col_name": "dod",
+        "format_master_data": partial(
+            format_master_record_first_array_item, colname="dod"
+        ),
+        "gen_uncorrupted_record": partial(
+            date_gen_uncorrupted_record, input_colname="dod", output_colname="dod"
+        ),
     },
     {
         "col_name": "birth_coordinates",
@@ -144,86 +135,255 @@ config = [
             input_colname="birth_coordinates",
             output_colname="birth_coordinates",
         ),
-        "corruption_functions": [
-            {
-                "fn": partial(
-                    lat_lng_corrupt_distance,
-                    input_colname="birth_coordinates",
-                    output_colname="birth_coordinates",
-                    distance_min=0.1,
-                    distance_max=10,
-                ),
-                "p": 1.0,
-            },
-        ],
-        "null_function": basic_null_fn("birth_coordinates"),
-    },
-    {
-        "col_name": "residence_coordinates",
-        "format_master_data": master_record_no_op,
-        "gen_uncorrupted_record": partial(
-            lat_lng_uncorrupted_record,
-            input_colname="residence_coordinates",
-            output_colname="residence_coordinates",
-        ),
-        "corruption_functions": [
-            {
-                "fn": partial(
-                    lat_lng_corrupt_distance,
-                    input_colname="residence_coordinates",
-                    output_colname="residence_coordinates",
-                    distance_min=0.1,
-                    distance_max=10,
-                ),
-                "p": 1.0,
-            },
-        ],
-        "null_function": basic_null_fn("residence_coordinates"),
     },
     {
         "col_name": "country_citizenLabel",
         "format_master_data": country_citizenship_format_master_record,
         "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
-        "corruption_functions": [{"fn": country_citizenship_corrupt, "p": 1.0}],
-        "null_function": basic_null_fn("country_citizenship"),
     },
 ]
 
 
-max_corrupted_records = 3
+rc = RecordCorruptor()
+
+
+########
+# Date of birth and date of death corruptions
+########
+
+# Create a timedelta corruption with baseline probability 20%
+# This is a simple independent corruption function that's not affected
+# by the presence or absence of other corruptions, or the values in the data
+rc.add_simple_corruption(
+    name="dob_timedelta",  # So we can keep a list of the corruptions that were activated
+    corruption_function=date_corrupt_timedelta,  # A python function containing the definition of the function
+    args={
+        "input_colname": "dob",
+        "output_colname": "dob",
+        "num_days_delta": 50,
+    },  # Any arguments that need to be passed to the python function
+    baseline_probability=0.1,
+)
+
+# A corruption function that simultaneously sets dob and dod to jan first
+# We will also add a probability adjustment that modifies the probability
+# of activation based on the values in the record
+dob_dod_jan_first = CompositeCorruption(
+    name="dob_dod_jan_first_corruption", baseline_probability=0.1
+)
+dob_dod_jan_first.add_corruption_function(
+    date_corrupt_jan_first, args={"input_colname": "dob", "output_colname": "dob"}
+)
+dob_dod_jan_first.add_corruption_function(
+    date_corrupt_jan_first, args={"input_colname": "dod", "output_colname": "dod"}
+)
+
+rc.add_composite_corruption(dob_dod_jan_first)
+
+# Make this twice as likely if the dob is < 1990
+sql_condition = "year(try_cast(dob as date)) < 1900"
+adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
+rc.add_probability_adjustment(adjustment)
+
+rc.add_simple_corruption(
+    name="dob_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "dob"},
+    baseline_probability=0.1,
+)
+
+rc.add_simple_corruption(
+    name="dod_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "dod"},
+    baseline_probability=0.1,
+)
+
+# Note that the order in which you register corruptions is the order in which they're
+# executed.  e.g. you might want the jan first corruption to come after the timedelta
+# corruption, which may be better in the case where both are activated
+
+
+########
+# Name-based corruptions
+########
+
+
+rc.add_simple_corruption(
+    name="pick_alt_full_name",
+    corruption_function=full_name_alternative,
+    args={},
+    baseline_probability=0.4,
+)
+
+rc.add_simple_corruption(
+    name="pick_alternative_individual_names",
+    corruption_function=each_name_alternatives,
+    args={},
+    baseline_probability=0.1,
+)
+
+# Name inversions more common for certain birthCountries
+name_inversion_corrpution = CompositeCorruption(
+    name="name_inversion", baseline_probability=0.05
+)
+name_inversion_corrpution.add_corruption_function(name_inversion, args={})
+rc.add_composite_corruption(name_inversion_corrpution)
+
+adjustment_lookup = {
+    "birth_country": {
+        "Japan": [(name_inversion_corrpution, 2)],
+        "People's Republic of China": [(name_inversion_corrpution, 4)],
+    }
+}
+adjustment = ProbabilityAdjustmentFromLookup(adjustment_lookup)
+rc.add_probability_adjustment(adjustment)
+
+
+# Typos more common from certain contries
+name_typo_corruption = CompositeCorruption(name="name_typo", baseline_probability=0.2)
+name_typo_corruption.add_corruption_function(full_name_typo, args={})
+rc.add_composite_corruption(name_typo_corruption)
+
+
+sql_condition = "birth_country not in ('United States of America', 'United Kingdom') and birth_country not null"
+adjustment = ProbabilityAdjustmentFromSQL(sql_condition, name_typo_corruption, 2)
+rc.add_probability_adjustment(adjustment)
+
+rc.add_simple_corruption(
+    name="full_name_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "full_name"},
+    baseline_probability=0.1,
+)
+
+########
+# Occupation corruption
+########
+
+rc.add_simple_corruption(
+    name="occupation_corrupt",
+    corruption_function=occupation_corrupt,
+    args={},
+    baseline_probability=0.1,
+)
+
+rc.add_simple_corruption(
+    name="occupation_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "occupation"},
+    baseline_probability=0.1,
+)
+
+########
+# Country citizenship corruption
+########
+rc.add_simple_corruption(
+    name="country_citizenship_corrupt",
+    corruption_function=country_citizenship_corrupt,
+    args={},
+    baseline_probability=0.3,
+)
+
+rc.add_simple_corruption(
+    name="country_citizenship_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "country_citizenship"},
+    baseline_probability=0.1,
+)
+
+########
+# Birth coordinates corruption
+########
+
+
+rc.add_simple_corruption(
+    name="birth_coordinates_corrupt",
+    corruption_function=lat_lng_corrupt_distance,
+    args={
+        "input_colname": "birth_coordinates",
+        "output_colname": "birth_coordinates",
+        "distance_min": 25,
+        "distance_max": 25,
+    },
+    baseline_probability=0.1,
+)
+
+rc.add_simple_corruption(
+    name="birth_coordinates_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "birth_coordinates"},
+    baseline_probability=0.1,
+)
+
+
+max_corrupted_records = 20
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
-records = raw_data.to_dict(orient="records")
+
+pd.options.display.max_columns = 1000
+pd.options.display.max_colwidth = 1000
+
+Path(FINAL_CORRUPTED_OUTPUT_FILES_BASE).mkdir(parents=True, exist_ok=True)
 
 
-output_records = []
-for i, master_input_record in enumerate(records):
+if __name__ == "__main__":
 
-    # Formats the input data into an easy format for producing
-    # an uncorrupted/corrupted outputs records
-    formatted_master_record = format_master_data(master_input_record, config)
+    parser = argparse.ArgumentParser(description="data_linking job runner")
 
-    uncorrupted_output_record = generate_uncorrupted_output_record(
-        formatted_master_record, config
-    )
+    parser.add_argument("--start_year", type=int)
+    parser.add_argument("--num_years", type=int)
+    args = parser.parse_args()
+    start_year = args.start_year
+    num_years = args.num_years
 
-    output_records.append(uncorrupted_output_record)
+    for year in range(start_year, start_year + num_years + 1):
 
-    # How many corrupted records to generate
-    total_num_corrupted_records = np.random.choice(
-        zipf_dist["vals"], p=zipf_dist["weights"]
-    )
+        sql = f"""
+        select *
+        from '{in_path}'
+        where
+            year(try_cast(dod[1] as date)) = {year}
+        """
 
-    # Decide what types of corruptions to introduce
-    error_vectors = generate_error_vectors(config, total_num_corrupted_records)
+        raw_data = con.execute(sql).df()
+        records = raw_data.to_dict(orient="records")
 
-    # Apply corruptions
-    for vector in error_vectors:
-        logger.info(f"Error vector: {vector=}")
-        corrupted_record = apply_error_vector(vector, formatted_master_record, config)
-        output_records.append(corrupted_record)
+        output_records = []
+        for i, master_input_record in enumerate(records):
 
+            # Formats the input data into an easy format for producing
+            # an uncorrupted/corrupted outputs records
+            formatted_master_record = format_master_data(master_input_record, config)
 
-df = pd.DataFrame(output_records)
+            uncorrupted_output_record = generate_uncorrupted_output_record(
+                formatted_master_record, config
+            )
+            uncorrupted_output_record["corruptions_applied"] = []
 
-df.head(20)
+            output_records.append(uncorrupted_output_record)
+
+            # How many corrupted records to generate
+            total_num_corrupted_records = np.random.choice(
+                zipf_dist["vals"], p=zipf_dist["weights"]
+            )
+
+            for i in range(total_num_corrupted_records):
+                record_to_modify = uncorrupted_output_record.copy()
+                record_to_modify["corruptions_applied"] = []
+                record_to_modify["id"] = (
+                    uncorrupted_output_record["cluster"] + f"_{i+1}"
+                )
+                record_to_modify["uncorrupted_record"] = False
+                rc.apply_probability_adjustments(uncorrupted_output_record)
+                corrupted_record = rc.apply_corruptions_to_record(
+                    formatted_master_record,
+                    record_to_modify,
+                )
+                output_records.append(corrupted_record)
+
+        df = pd.DataFrame(output_records)
+        path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
+
+        df.to_parquet(path, index=False)
+        print(f"written {year} with {len(df):,.0f} records")

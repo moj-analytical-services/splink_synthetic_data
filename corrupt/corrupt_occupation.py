@@ -21,7 +21,7 @@ def occupation_gen_uncorrupted_record(formatted_master_record, record_to_modify=
     return record_to_modify
 
 
-def occupation_corrupt(formatted_master_record, record_to_modify={}):
+def occupation_corrupt(formatted_master_record, record_to_modify):
     options = formatted_master_record["_list_occupations"]
     if options is None:
         record_to_modify["occupation"] = None

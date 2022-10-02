@@ -23,11 +23,11 @@ def offset_by_distance_in_random_direction(geo_struct, distance_km):
 
 def lat_lng_corrupt_distance(
     formatted_master_record,
+    record_to_modify,
     input_colname,
     output_colname,
-    distance_min=10,
-    distance_max=10,
-    record_to_modify={},
+    distance_min,
+    distance_max,
 ):
 
     if not formatted_master_record[input_colname]:
@@ -38,7 +38,7 @@ def lat_lng_corrupt_distance(
         # Chisquare 3 runs between 0 and about 10
         chi = chisquare(3, 1)
         multiplier = (distance_max - distance_min) / 10
-        distance = (chi * multiplier) + distance_min
+        distance = (float(chi[0]) * multiplier) + distance_min
         new_geostruct = offset_by_distance_in_random_direction(geostruct, distance)
         record_to_modify[output_colname] = new_geostruct
     return record_to_modify

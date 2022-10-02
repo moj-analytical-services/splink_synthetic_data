@@ -5,6 +5,7 @@ WIKIDATA = "wikidata"
 RAW = "raw"
 PERSONS = "persons"
 NAMES = "names"
+FINAL_OUPTUTS = "final_outputs"
 
 
 PERSONS_BY_DOD_RAW_OUT_PATH = os.path.join(OUT_BASE, WIKIDATA, RAW, PERSONS, "by_dod")
@@ -26,14 +27,10 @@ def persons_by_dob_raw_filename_full_year(year):
 # Processed
 PROCESSED = "processed"
 PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR = os.path.join(
-    OUT_BASE,
-    WIKIDATA,
-    PROCESSED,
-    "one_row_per_person"
+    OUT_BASE, WIKIDATA, PROCESSED, "one_row_per_person"
 )
 PERSONS_PROCESSED_ONE_ROW_PER_PERSON = os.path.join(
-    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR,
-    "raw_scraped_one_row_per_person.parquet"
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR, "raw_scraped_one_row_per_person.parquet"
 )
 
 NAMES_PROCESSED_GIVEN_NAME_ALT_LOOKUP = os.path.join(
@@ -54,3 +51,5 @@ TRANSFORMED_MASTER_DATA = os.path.join(
 TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON = os.path.join(
     TRANSFORMED_MASTER_DATA, "one_row_per_person"
 )
+
+FINAL_CORRUPTED_OUTPUT_FILES_BASE = os.path.join(OUT_BASE, WIKIDATA, FINAL_OUPTUTS)
