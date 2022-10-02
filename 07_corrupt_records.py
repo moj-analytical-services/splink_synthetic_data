@@ -379,3 +379,7 @@ df
 # Composite corruptions listed not individual ones in log
 # Add nulls
 # Tidy up unused code
+
+import datetime
+
+str({"a": 1, "b": datetime.datetime.now()})

@@ -1,6 +1,7 @@
 from functools import partial
 import random
 import logging
+from xml.etree.ElementTree import C14NWriterTarget
 import pandas as pd
 import duckdb
 
@@ -35,8 +36,11 @@ class CompositeCorruption:
         bf = bf * bayes_factor_adjustment
         self.adjusted_probability = bayes_factor_to_prob(bf)
 
-    def sample(self):
-        """activate corruption functions based on self.adjusted_probability"""
+    def apply_corruptions(
+        self,
+        formatted_master_data,
+        record_to_modify,
+    ):
 
         logger.debug(
             f"Probability {self.name} composite corruption will be selected is "
@@ -45,10 +49,17 @@ class CompositeCorruption:
 
         if random.uniform(0, 1) < self.adjusted_probability:
             self.reset_probability()
-            return self.functions
+            record_to_modify_before = str(record_to_modify)
+            for fn in self.functions:
+                record_to_modify = fn(formatted_master_data, record_to_modify)
+
+            if record_to_modify_before != str(record_to_modify):
+                record_to_modify["corruptions_applied"].append(self.name)
+            return record_to_modify
+
         else:
             self.reset_probability()
-            return []
+            return record_to_modify
 
 
 class ProbabilityAdjustmentFromLookup:
@@ -182,16 +193,13 @@ class RecordCorruptor:
     def choose_functions_to_apply(self):
         functions = []
         for c in self.corruptions:
-            functions.extend(c.sample())
+            new_functions = c.sample()
+            functions.extend(new_functions)
         return functions
 
     def apply_corruptions_to_record(self, formatted_master_data, record_to_modify):
-        functions_to_apply = self.choose_functions_to_apply()
-        for f in functions_to_apply:
-            record_to_modify = f(
-                formatted_master_data,
-                record_to_modify,
+        for c in self.corruptions:
+            record_to_modify = c.apply_corruptions(
+                formatted_master_data, record_to_modify
             )
-            record_to_modify["corruptions_applied"].append(f.func.__name__)
-
         return record_to_modify
