@@ -1,3 +1,4 @@
+from pathlib import Path
 import os
 import logging
 import pandas as pd
@@ -45,7 +46,10 @@ from corrupt.corrupt_country_citizenship import (
 from corrupt.corrupt_birth_country import birth_country_gen_uncorrupted_record
 
 
-from path_fns.filepaths import TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON
+from path_fns.filepaths import (
+    TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON,
+    FINAL_CORRUPTED_OUTPUT_FILES_BASE,
+)
 
 from corrupt.corrupt_lat_lng import lat_lng_uncorrupted_record, lat_lng_corrupt_distance
 
@@ -74,17 +78,6 @@ in_path = os.path.join(
     TRANSFORMED_MASTER_DATA_ONE_ROW_PER_PERSON, "transformed_master_data.parquet"
 )
 
-
-sql = f"""
-select *
-from '{in_path}'
-where dod[1] >= date'1501-01-01'
-and dod[1] < date'1502-01-01'
-"""
-
-pd.options.display.max_columns = 1000
-raw_data = con.execute(sql).df()
-# display(raw_data)
 
 # Configure how corruptions will be made for each field
 
@@ -288,7 +281,7 @@ rc.add_simple_corruption(
     name="country_citizenship_corrupt",
     corruption_function=country_citizenship_corrupt,
     args={},
-    baseline_probability=0.9,
+    baseline_probability=0.3,
 )
 
 rc.add_simple_corruption(
@@ -312,7 +305,7 @@ rc.add_simple_corruption(
         "distance_min": 25,
         "distance_max": 25,
     },
-    baseline_probability=0.9,
+    baseline_probability=0.1,
 )
 
 rc.add_simple_corruption(
@@ -326,47 +319,58 @@ rc.add_simple_corruption(
 max_corrupted_records = 20
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
-records = raw_data.to_dict(orient="records")
 
-
-output_records = []
-for i, master_input_record in enumerate(records):
-
-    # Formats the input data into an easy format for producing
-    # an uncorrupted/corrupted outputs records
-    formatted_master_record = format_master_data(master_input_record, config)
-
-    uncorrupted_output_record = generate_uncorrupted_output_record(
-        formatted_master_record, config
-    )
-    uncorrupted_output_record["corruptions_applied"] = []
-
-    output_records.append(uncorrupted_output_record)
-
-    # How many corrupted records to generate
-    total_num_corrupted_records = np.random.choice(
-        zipf_dist["vals"], p=zipf_dist["weights"]
-    )
-
-    for i in range(total_num_corrupted_records):
-        record_to_modify = uncorrupted_output_record.copy()
-        record_to_modify["corruptions_applied"] = []
-        record_to_modify["id"] = uncorrupted_output_record["cluster"] + f"_{i+1}"
-        record_to_modify["uncorrupted_record"] = False
-        rc.apply_probability_adjustments(uncorrupted_output_record)
-        corrupted_record = rc.apply_corruptions_to_record(
-            formatted_master_record,
-            record_to_modify,
-        )
-        output_records.append(corrupted_record)
-
-df = pd.DataFrame(output_records)
 pd.options.display.max_columns = 1000
-pd.options.display.max_rows = 2000
 pd.options.display.max_colwidth = 1000
-df
 
-# Some functinos only sometimes corrupt - how to log this properly?
-# Composite corruptions listed not individual ones in log
-# Add nulls
-# Tidy up unused code
+Path(FINAL_CORRUPTED_OUTPUT_FILES_BASE).mkdir(parents=True, exist_ok=True)
+
+for year in range(1500, 1600):
+
+    sql = f"""
+    select *
+    from '{in_path}'
+    where
+        year(try_cast(dod[1] as date)) = {year}
+
+    """
+
+    raw_data = con.execute(sql).df()
+    records = raw_data.to_dict(orient="records")
+
+    output_records = []
+    for i, master_input_record in enumerate(records):
+
+        # Formats the input data into an easy format for producing
+        # an uncorrupted/corrupted outputs records
+        formatted_master_record = format_master_data(master_input_record, config)
+
+        uncorrupted_output_record = generate_uncorrupted_output_record(
+            formatted_master_record, config
+        )
+        uncorrupted_output_record["corruptions_applied"] = []
+
+        output_records.append(uncorrupted_output_record)
+
+        # How many corrupted records to generate
+        total_num_corrupted_records = np.random.choice(
+            zipf_dist["vals"], p=zipf_dist["weights"]
+        )
+
+        for i in range(total_num_corrupted_records):
+            record_to_modify = uncorrupted_output_record.copy()
+            record_to_modify["corruptions_applied"] = []
+            record_to_modify["id"] = uncorrupted_output_record["cluster"] + f"_{i+1}"
+            record_to_modify["uncorrupted_record"] = False
+            rc.apply_probability_adjustments(uncorrupted_output_record)
+            corrupted_record = rc.apply_corruptions_to_record(
+                formatted_master_record,
+                record_to_modify,
+            )
+            output_records.append(corrupted_record)
+
+    df = pd.DataFrame(output_records)
+    path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
+
+    df.to_parquet(path, index=False)
+    print(f"written {year} with {len(df):,.0f} records")
