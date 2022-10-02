@@ -48,7 +48,10 @@ def date_corrupt_timedelta(
         return record_to_modify
 
     input_value = record_to_modify[input_colname]
-    input_value = datetime.fromisoformat(input_value)
+    try:
+        input_value = datetime.fromisoformat(input_value)
+    except ValueError:
+        record_to_modify
 
     delta = timedelta(days=random.randint(-num_days_delta, num_days_delta))
 

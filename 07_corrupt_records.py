@@ -78,11 +78,8 @@ in_path = os.path.join(
 sql = f"""
 select *
 from '{in_path}'
-where dod[1] > date'1980-01-01'
-USING SAMPLE 0.1 PERCENT (bernoulli)
-
-
-limit 10
+where dod[1] >= date'1501-01-01'
+and dod[1] < date'1502-01-01'
 """
 
 pd.options.display.max_columns = 1000
@@ -190,7 +187,7 @@ dob_dod_jan_first.add_corruption_function(
 rc.add_composite_corruption(dob_dod_jan_first)
 
 # Make this twice as likely if the dob is < 1990
-sql_condition = "year(cast(dob as date)) < 1900"
+sql_condition = "year(try_cast(dob as date)) < 1900"
 adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
 rc.add_probability_adjustment(adjustment)
 
@@ -344,15 +341,6 @@ for i, master_input_record in enumerate(records):
     )
     uncorrupted_output_record["corruptions_applied"] = []
 
-    # import pprint
-
-    # pprint.pprint(formatted_master_record, indent=4)
-    # print("--")
-    # print("--")
-    # print("--")
-    # pprint.pprint(uncorrupted_output_record)
-    # break
-
     output_records.append(uncorrupted_output_record)
 
     # How many corrupted records to generate
@@ -374,7 +362,7 @@ for i, master_input_record in enumerate(records):
 
 df = pd.DataFrame(output_records)
 pd.options.display.max_columns = 1000
-pd.options.display.max_rows = 105
+pd.options.display.max_rows = 2000
 pd.options.display.max_colwidth = 1000
 df
 
