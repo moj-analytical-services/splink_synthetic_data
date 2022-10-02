@@ -80,54 +80,17 @@ using the following process:
 
 ```mermaid
 graph TD
-    Z[Single record from raw input data]
-    A[Add columns to formatted master record dict]
-    B[Add column to uncorrupted output record]
-    BB[Append final uncorrupted output record to outputs]
-    EV[Generate one or more error vectors, then for each error vector]
-    C[Add column to corrupted output record]
-    CC[Append final corrupted output record to outputs]
-    E[Output corrupted and uncorrupted records to final corrupted dataset]
-    Z --> |Formatted master record dict is initialised as the raw input data, as a dict|A
-    A --> |For each output column in config|A
-    B --> |For each output column in config|B
-    C --> |For each output column in config|C
-    A --> |Initialise blank uncorrupted record dict|B
-    A --> EV
-    EV --> |Initialise blank corrupted record dict|C
-    C --> CC
-    CC --> E
-    B --> BB
-    BB --> E
+    A[Single record from raw input data]
+    B[Transform into `formatted_master_record`]
+    C[Uncorrupted output record]
+    D[Compute adjusted probabilities of activation of each corruption based on data in uncorrupted output record]
+    E[Generate corrupted record using corruption functions registered on the `RecordCorruptor`]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    B --> |Apply each `format_master_data` function in config|B
+    C --> |Apply each `gen_uncorrupted_record` function in config|C
 
 ```
-
-The script uses a config, which specifies, _**for each output column**_:
-
-- `format_master_data`: Any transforms to apply to the raw input data to clean it up and make it easier to process. For example, some arrays like date of birth should only have one element, so we might want to take the first element.
-- `gen_uncorrupted_record`: How to turn the formatted master data into an uncorrupted output record
-- `corruption_functions`: A list of functions that apply corruptions of various types to the `formatted_master_data`
-- `null_function`: A function that describes how to null out (partially or completely) the output record
-
-The config is a list of dictionaries. An example of an element, which produces an output occupation column could look like this:
-
-```
-    {
-        "col_name": "occupation",
-        "format_master_data": occupation_format_master_record,
-        "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
-        "corruption_functions": [{"fn": occupation_corrupt, "p": 1.0}],
-        "null_function": basic_null_fn("occupation"),
-
-    },
-```
-
-This example will be used below to provide more detail how it works.
-
-For each item in the config
-
-- Apply the function provided at `format_master_data` and apply the function provided `format_master_data()`. This is sometimes needed to further prepare input data into something easy to corrupt. In our example, the function `occupation_format_master_record` is called.
-
-- Create an uncorrupted output record using the function provided at `gen_uncorrupted_record`, in our case `occupation_gen_uncorrupted_record`. Another good example is if we want to pick the 'best' name for a person out of a series of alternatives.
-
-- Create a series of corrupted records, using one or more corruption functions provided at the key `corruption_functions` and the `null_function`.
