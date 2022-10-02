@@ -121,6 +121,7 @@ class ProbabilityAdjustmentFromSQL:
         self.sql = sql
         self.composite_corruption = composite_corruption
         self.bayes_factor = bayes_factor
+        self.con = duckdb.connect()
 
     def get_adjustment_tuples(self, record):
         """
@@ -136,13 +137,13 @@ class ProbabilityAdjustmentFromSQL:
                 using a bayes factor of 2.0
         """
         df = pd.DataFrame([record])
-        con = duckdb.connect()
-        con.register("df", df)
+
+        self.con.register("df", df)
         sql = f"""
         select {self.sql} as condition_matches
         from df
         """
-        matches = con.execute(sql).fetchone()[0]
+        matches = self.con.execute(sql).fetchone()[0]
 
         if matches:
             adjustment_tuples = [(self.composite_corruption, self.bayes_factor)]

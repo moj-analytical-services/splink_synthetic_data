@@ -82,12 +82,12 @@ where dod[1] > date'1980-01-01'
 USING SAMPLE 0.1 PERCENT (bernoulli)
 
 
-limit 3
+limit 10
 """
 
 pd.options.display.max_columns = 1000
 raw_data = con.execute(sql).df()
-display(raw_data)
+# display(raw_data)
 
 # Configure how corruptions will be made for each field
 
@@ -326,7 +326,7 @@ rc.add_simple_corruption(
 )
 
 
-max_corrupted_records = 3
+max_corrupted_records = 20
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
 records = raw_data.to_dict(orient="records")
@@ -373,13 +373,12 @@ for i, master_input_record in enumerate(records):
         output_records.append(corrupted_record)
 
 df = pd.DataFrame(output_records)
+pd.options.display.max_columns = 1000
+pd.options.display.max_rows = 105
+pd.options.display.max_colwidth = 1000
 df
 
 # Some functinos only sometimes corrupt - how to log this properly?
 # Composite corruptions listed not individual ones in log
 # Add nulls
 # Tidy up unused code
-
-import datetime
-
-str({"a": 1, "b": datetime.datetime.now()})
