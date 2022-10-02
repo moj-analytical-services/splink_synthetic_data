@@ -10,6 +10,7 @@ from corrupt.corruption_functions import (
     format_master_data,
     generate_uncorrupted_output_record,
     format_master_record_first_array_item,
+    null_corruption,
 )
 
 
@@ -78,10 +79,10 @@ sql = f"""
 select *
 from '{in_path}'
 where dod[1] > date'1980-01-01'
-USING SAMPLE 0.01 PERCENT (bernoulli)
+USING SAMPLE 0.1 PERCENT (bernoulli)
 
 
-limit 10
+limit 3
 """
 
 pd.options.display.max_columns = 1000
@@ -193,6 +194,19 @@ sql_condition = "year(cast(dob as date)) < 1900"
 adjustment = ProbabilityAdjustmentFromSQL(sql_condition, dob_dod_jan_first, 4)
 rc.add_probability_adjustment(adjustment)
 
+rc.add_simple_corruption(
+    name="dob_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "dob"},
+    baseline_probability=0.1,
+)
+
+rc.add_simple_corruption(
+    name="dod_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "dod"},
+    baseline_probability=0.1,
+)
 
 # Note that the order in which you register corruptions is the order in which they're
 # executed.  e.g. you might want the jan first corruption to come after the timedelta
@@ -220,7 +234,7 @@ rc.add_simple_corruption(
 
 # Name inversions more common for certain birthCountries
 name_inversion_corrpution = CompositeCorruption(
-    name="name_inversion", baseline_probability=0.1
+    name="name_inversion", baseline_probability=0.05
 )
 name_inversion_corrpution.add_corruption_function(name_inversion, args={})
 rc.add_composite_corruption(name_inversion_corrpution)
@@ -245,6 +259,13 @@ sql_condition = "birth_country not in ('United States of America', 'United Kingd
 adjustment = ProbabilityAdjustmentFromSQL(sql_condition, name_typo_corruption, 2)
 rc.add_probability_adjustment(adjustment)
 
+rc.add_simple_corruption(
+    name="full_name_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "full_name"},
+    baseline_probability=0.1,
+)
+
 ########
 # Occupation corruption
 ########
@@ -256,6 +277,12 @@ rc.add_simple_corruption(
     baseline_probability=0.1,
 )
 
+rc.add_simple_corruption(
+    name="occupation_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "occupation"},
+    baseline_probability=0.1,
+)
 
 ########
 # Country citizenship corruption
@@ -267,6 +294,12 @@ rc.add_simple_corruption(
     baseline_probability=0.9,
 )
 
+rc.add_simple_corruption(
+    name="country_citizenship_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "country_citizenship"},
+    baseline_probability=0.1,
+)
 
 ########
 # Birth coordinates corruption
@@ -285,7 +318,15 @@ rc.add_simple_corruption(
     baseline_probability=0.9,
 )
 
-max_corrupted_records = 10
+rc.add_simple_corruption(
+    name="birth_coordinates_null",
+    corruption_function=null_corruption,
+    args={"output_colname": "birth_coordinates"},
+    baseline_probability=0.1,
+)
+
+
+max_corrupted_records = 3
 zipf_dist = get_zipf_dist(max_corrupted_records)
 
 records = raw_data.to_dict(orient="records")
@@ -332,10 +373,9 @@ for i, master_input_record in enumerate(records):
         output_records.append(corrupted_record)
 
 df = pd.DataFrame(output_records)
+df
 
-df.head(20)
-
-
+# Some functinos only sometimes corrupt - how to log this properly?
 # Composite corruptions listed not individual ones in log
 # Add nulls
 # Tidy up unused code

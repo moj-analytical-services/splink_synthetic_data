@@ -97,39 +97,6 @@ def full_name_typo(formatted_master_record, record_to_modify):
     return record_to_modify
 
 
-def full_name_null(formatted_master_record, record_to_modify={}):
-
-    new_name = formatted_master_record["full_name_arr"][0].split(" ")
-
-    try:
-        first = new_name.pop(0)
-    except IndexError:
-        first = None
-    try:
-        last = new_name.pop()
-    except IndexError:
-        last = None
-
-    # Erase middle names with probability 0.5
-    new_name = [n for n in new_name if random.uniform(0, 1) > 0.5]
-
-    # Erase first or last name with prob null prob
-
-    if random.uniform(0, 1) > 1 / 2:
-        first = None
-    if random.uniform(0, 1) > 1 / 2:
-        last = None
-
-    new_name = [first] + new_name + [last]
-
-    new_name = [n for n in new_name if n is not None]
-    if len(new_name) > 0:
-        record_to_modify["full_name"] = " ".join(new_name)
-    else:
-        record_to_modify["full_name"] = None
-    return record_to_modify
-
-
 def name_inversion(formatted_master_record, record_to_modify):
 
     given = formatted_master_record["given_nameLabel"]

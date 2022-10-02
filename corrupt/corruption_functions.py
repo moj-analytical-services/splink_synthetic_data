@@ -1,5 +1,4 @@
 from functools import partial
-import random
 
 
 def master_record_no_op(master_record):
@@ -47,3 +46,8 @@ def format_master_record_first_array_item(master_input_record, colname):
     else:
         master_input_record[colname] = master_input_record[colname][0]
     return master_input_record
+
+
+def null_corruption(formatted_master_record, record_to_modify, output_colname):
+    record_to_modify[output_colname] = None
+    return record_to_modify
