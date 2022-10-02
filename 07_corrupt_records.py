@@ -1,18 +1,12 @@
 import os
-
 import logging
-
-
 import pandas as pd
 import numpy as np
-
 import duckdb
 
-from corrupt.corrupt_string import string_corrupt_numpad
 
 from corrupt.corruption_functions import (
     master_record_no_op,
-    basic_null_fn,
     format_master_data,
     generate_uncorrupted_output_record,
     format_master_record_first_array_item,
@@ -29,8 +23,8 @@ from corrupt.corrupt_name import (
     full_name_gen_uncorrupted_record,
     full_name_alternative,
     each_name_alternatives,
-    full_name_typo,
     name_inversion,
+    full_name_typo,
 )
 
 
@@ -84,7 +78,10 @@ sql = f"""
 select *
 from '{in_path}'
 where dod[1] > date'1980-01-01'
-limit 5
+USING SAMPLE 0.01 PERCENT (bernoulli)
+
+
+limit 10
 """
 
 pd.options.display.max_columns = 1000
@@ -115,11 +112,11 @@ config = [
         ),
         "gen_uncorrupted_record": birth_country_gen_uncorrupted_record,
     },
-    # {
-    #     "col_name": "occupation",
-    #     "format_master_data": occupation_format_master_record,
-    #     "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
-    # },
+    {
+        "col_name": "occupation",
+        "format_master_data": occupation_format_master_record,
+        "gen_uncorrupted_record": occupation_gen_uncorrupted_record,
+    },
     {
         "col_name": "dob",
         "format_master_data": partial(
@@ -138,20 +135,20 @@ config = [
             date_gen_uncorrupted_record, input_colname="dod", output_colname="dod"
         ),
     },
-    # {
-    #     "col_name": "birth_coordinates",
-    #     "format_master_data": master_record_no_op,
-    #     "gen_uncorrupted_record": partial(
-    #         lat_lng_uncorrupted_record,
-    #         input_colname="birth_coordinates",
-    #         output_colname="birth_coordinates",
-    #     ),
-    # },
-    # {
-    #     "col_name": "country_citizenLabel",
-    #     "format_master_data": country_citizenship_format_master_record,
-    #     "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
-    # },
+    {
+        "col_name": "birth_coordinates",
+        "format_master_data": master_record_no_op,
+        "gen_uncorrupted_record": partial(
+            lat_lng_uncorrupted_record,
+            input_colname="birth_coordinates",
+            output_colname="birth_coordinates",
+        ),
+    },
+    {
+        "col_name": "country_citizenLabel",
+        "format_master_data": country_citizenship_format_master_record,
+        "gen_uncorrupted_record": country_citizenship_gen_uncorrupted_record,
+    },
 ]
 
 
@@ -211,7 +208,7 @@ rc.add_simple_corruption(
     name="pick_alt_full_name",
     corruption_function=full_name_alternative,
     args={},
-    baseline_probability=0.2,
+    baseline_probability=0.4,
 )
 
 rc.add_simple_corruption(
@@ -230,12 +227,63 @@ rc.add_composite_corruption(name_inversion_corrpution)
 
 adjustment_lookup = {
     "birth_country": {
-        "Japan": [(name_inversion_corrpution, 4)],
-        "China": [(name_inversion_corrpution, 4)],
+        "Japan": [(name_inversion_corrpution, 2)],
+        "People's Republic of China": [(name_inversion_corrpution, 4)],
     }
 }
 adjustment = ProbabilityAdjustmentFromLookup(adjustment_lookup)
 rc.add_probability_adjustment(adjustment)
+
+
+# Typos more common from certain contries
+name_typo_corruption = CompositeCorruption(name="name_typo", baseline_probability=0.2)
+name_typo_corruption.add_corruption_function(full_name_typo, args={})
+rc.add_composite_corruption(name_typo_corruption)
+
+
+sql_condition = "birth_country not in ('United States of America', 'United Kingdom') and birth_country not null"
+adjustment = ProbabilityAdjustmentFromSQL(sql_condition, name_typo_corruption, 2)
+rc.add_probability_adjustment(adjustment)
+
+########
+# Occupation corruption
+########
+
+rc.add_simple_corruption(
+    name="occupation_corrupt",
+    corruption_function=occupation_corrupt,
+    args={},
+    baseline_probability=0.1,
+)
+
+
+########
+# Country citizenship corruption
+########
+rc.add_simple_corruption(
+    name="country_citizenship_corrupt",
+    corruption_function=country_citizenship_corrupt,
+    args={},
+    baseline_probability=0.9,
+)
+
+
+########
+# Birth coordinates corruption
+########
+
+
+rc.add_simple_corruption(
+    name="birth_coordinates_corrupt",
+    corruption_function=lat_lng_corrupt_distance,
+    args={
+        "input_colname": "birth_coordinates",
+        "output_colname": "birth_coordinates",
+        "distance_min": 25,
+        "distance_max": 25,
+    },
+    baseline_probability=0.9,
+)
 
 max_corrupted_records = 10
 zipf_dist = get_zipf_dist(max_corrupted_records)
@@ -270,6 +318,7 @@ for i, master_input_record in enumerate(records):
     total_num_corrupted_records = np.random.choice(
         zipf_dist["vals"], p=zipf_dist["weights"]
     )
+
     for i in range(total_num_corrupted_records):
         record_to_modify = uncorrupted_output_record.copy()
         record_to_modify["corruptions_applied"] = []
@@ -285,3 +334,8 @@ for i, master_input_record in enumerate(records):
 df = pd.DataFrame(output_records)
 
 df.head(20)
+
+
+# Composite corruptions listed not individual ones in log
+# Add nulls
+# Tidy up unused code

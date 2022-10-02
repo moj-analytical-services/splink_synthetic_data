@@ -23,11 +23,11 @@ def offset_by_distance_in_random_direction(geo_struct, distance_km):
 
 def lat_lng_corrupt_distance(
     formatted_master_record,
+    record_to_modify,
     input_colname,
     output_colname,
-    distance_min=10,
-    distance_max=10,
-    record_to_modify={},
+    distance_min,
+    distance_max,
 ):
 
     if not formatted_master_record[input_colname]:

@@ -21,7 +21,12 @@ def get_family_name_alternatives_lookup():
 
 
 def full_name_gen_uncorrupted_record(master_record, record_to_modify={}):
-    record_to_modify["full_name"] = master_record["humanLabel"][0]
+    full_name = (
+        " ".join(master_record["given_nameLabel"])
+        + " "
+        + " ".join(master_record["family_nameLabel"])
+    )
+    record_to_modify["full_name"] = full_name.lower()
     return record_to_modify
 
 
@@ -30,11 +35,13 @@ def full_name_alternative(formatted_master_record, record_to_modify):
 
     options = formatted_master_record["full_name_arr"]
     if options is None:
-        record_to_modify["full_name"] = None
+        full_name = None
     elif len(options) == 1:
-        record_to_modify["full_name"] = options[0]
+        full_name = options[0]
     else:
-        record_to_modify["full_name"] = np.random.choice(options)
+        full_name = np.random.choice(options)
+    record_to_modify["full_name"] = full_name.lower()
+
     return record_to_modify
 
 
@@ -77,15 +84,9 @@ def each_name_alternatives(formatted_master_record, record_to_modify):
     return record_to_modify
 
 
-def full_name_typo(formatted_master_record, record_to_modify={}):
+def full_name_typo(formatted_master_record, record_to_modify):
 
-    options = formatted_master_record["full_name_arr"]
-
-    if options is None:
-        record_to_modify["full_name"] = None
-        return record_to_modify
-
-    full_name = options[0]
+    full_name = record_to_modify["full_name"]
 
     querty_corruptor = CorruptValueQuerty(
         position_function=position_mod_uniform, row_prob=0.5, col_prob=0.5
@@ -135,6 +136,7 @@ def name_inversion(formatted_master_record, record_to_modify):
     family = formatted_master_record["family_nameLabel"]
 
     if len(given) > 0 and len(family) > 0:
-        record_to_modify["full_name"] = family[0] + " " + given[0]
+        full_name = family[0] + " " + given[0]
+    record_to_modify["full_name"] = full_name.lower()
 
     return record_to_modify

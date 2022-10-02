@@ -23,7 +23,7 @@ def country_citizenship_gen_uncorrupted_record(
     return record_to_modify
 
 
-def country_citizenship_corrupt(formatted_master_record, record_to_modify={}):
+def country_citizenship_corrupt(formatted_master_record, record_to_modify):
     options = formatted_master_record["_list_country_citizenship"]
     if options is None:
         record_to_modify["country_citizenship"] = None
