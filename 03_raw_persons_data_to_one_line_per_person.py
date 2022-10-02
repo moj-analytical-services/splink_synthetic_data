@@ -9,7 +9,7 @@ pd.options.display.max_columns = 1000
 from path_fns.filepaths import (
     PERSONS_BY_DOD_RAW_OUT_PATH,
     PERSONS_PROCESSED_ONE_ROW_PER_PERSON,
-    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR
+    PERSONS_PROCESSED_ONE_ROW_PER_PERSON_DIR,
 )
 
 from pathlib import Path
@@ -25,6 +25,15 @@ arrow_table = pq.read_table(PERSONS_BY_DOD_RAW_OUT_PATH, schema=sch)
 
 con = duckdb.connect("myfile.duckdb")
 con.register("df", arrow_table)
+
+
+# Count the number of rows which will be output
+sql = f"""
+select count(distinct human)
+from df
+"""
+con.execute(sql).df()
+# Currently 1,028,710
 
 wikireplace = """replace({col}, 'http://www.wikidata.org/entity/', '') as {col}"""
 cast_date = "TRY_CAST({col} as date) as {col}"

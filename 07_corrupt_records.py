@@ -339,6 +339,11 @@ if __name__ == "__main__":
 
     for year in range(start_year, start_year + num_years + 1):
 
+        out_path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
+
+        if os.path.exists(out_path):
+            continue
+
         sql = f"""
         select *
         from '{in_path}'
@@ -383,7 +388,6 @@ if __name__ == "__main__":
                 output_records.append(corrupted_record)
 
         df = pd.DataFrame(output_records)
-        path = os.path.join(FINAL_CORRUPTED_OUTPUT_FILES_BASE, f"{year}.parquet")
 
-        df.to_parquet(path, index=False)
+        df.to_parquet(out_path, index=False)
         print(f"written {year} with {len(df):,.0f} records")

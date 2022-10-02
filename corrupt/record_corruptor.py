@@ -1,7 +1,6 @@
 from functools import partial
 import random
 import logging
-from xml.etree.ElementTree import C14NWriterTarget
 import pandas as pd
 import duckdb
 
@@ -18,6 +17,19 @@ def bayes_factor_to_prob(bf):
 
 
 class CompositeCorruption:
+    """This class models a 'composite corruption' - i.e. one or more corruptions
+    which happen simultanously.
+
+    For example, if the date of birth has accuracy to the nearest year, then
+    the date of death may also have accuracy to the nearest year.
+
+    As such, it holds one or more corruption functions in a list, each of which
+    will be applied to the input record
+
+    It it also helps to model the probability with which this list of corruption
+    functions will be activated
+    """
+
     def __init__(self, name="", baseline_probability=0.1):
         self.name = name
         self.functions = []
@@ -114,9 +126,6 @@ class ProbabilityAdjustmentFromSQL:
         """
         sql is a sql expression like:
         'len(first_name) < 3 and len(surname) < 3'
-
-        }
-
         """
         self.sql = sql
         self.composite_corruption = composite_corruption
@@ -124,18 +133,7 @@ class ProbabilityAdjustmentFromSQL:
         self.con = duckdb.connect()
 
     def get_adjustment_tuples(self, record):
-        """
-        Uses the record to lookup and return a list of adjustment tuples like:
-        [
-            (name_inversion_corruption, 0.1),
-            (initital_corruption, 2.0)
-        ]
-        i.e.
-            - decrease the probability of activating the name inversion corruption
-                using a bayes factor of 0.1
-            - increase the probability of activating the initial_corruption
-                using a bayes factor of 2.0
-        """
+
         df = pd.DataFrame([record])
 
         self.con.register("df", df)
@@ -157,6 +155,8 @@ class ProbabilityAdjustmentFromSQL:
 
 
 class RecordCorruptor:
+    """This class applies composite corruptions to an input record"""
+
     def __init__(self):
         self.corruptions: list[CompositeCorruption] = []
         self.probability_adjustments = []
